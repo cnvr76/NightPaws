@@ -4,6 +4,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import ssl
 
 from models.vacancy_model import Vacancy
+from models.user_model import User
 
 dotenv.load_dotenv()
 
@@ -26,7 +27,7 @@ class DatabaseConfig:
 
         await init_beanie(
             database=self.database,
-            document_models=[Vacancy]
+            document_models=[Vacancy, User]
         )
     
     async def disconnect(self):
