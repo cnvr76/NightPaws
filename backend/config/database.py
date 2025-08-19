@@ -1,10 +1,17 @@
 import dotenv, os
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
-import ssl
 
-from models.vacancy_model import Vacancy
+from models.application_model import Application
+from models.company_model import Company
+from models.external_applications_model import ExternalApplication
+from models.location_model import Location
+from models.processing_model import ProcessingQueue
+from models.resume_model import Resume
 from models.user_model import User
+from models.user_preferences_model import UserPreferences
+from models.user_vacancies_model import UserVacancy
+from models.vacancy_model import Vacancy
 
 dotenv.load_dotenv()
 
@@ -27,7 +34,18 @@ class DatabaseConfig:
 
         await init_beanie(
             database=self.database,
-            document_models=[Vacancy, User]
+            document_models=[
+                Application,
+                Company,
+                ExternalApplication,
+                Location,
+                ProcessingQueue,
+                Resume,
+                User,
+                UserPreferences,
+                UserVacancy,
+                Vacancy,
+            ]
         )
     
     async def disconnect(self):
