@@ -1,56 +1,20 @@
-import dotenv, os
-from beanie import init_beanie
-from motor.motor_asyncio import AsyncIOMotorClient
+import os
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-from models.application_model import Application
-from models.company_model import Company
-from models.external_applications_model import ExternalApplication
-from models.location_model import Location
-from models.processing_model import ProcessingQueue
-from models.resume_model import Resume
-from models.user_model import User
-from models.user_preferences_model import UserPreferences
-from models.user_vacancies_model import UserVacancy
-from models.vacancy_model import Vacancy
+load_dotenv()
 
-dotenv.load_dotenv()
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
-MONGODB_URL = os.getenv("MONGODB_URL")
-DATABASE_NAME = os.getenv("DATABASE_NAME")
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
-
-class DatabaseConfig:
-    def __init__(self):
-        self.mongodb_url: str = MONGODB_URL
-        self.database_name: str = DATABASE_NAME
-        self.client = None
-        self.database = None
-    
-    async def connect(self):
-        self.client = AsyncIOMotorClient(
-            self.mongodb_url,
-        )
-        self.database = self.client[self.database_name]
-
-        await init_beanie(
-            database=self.database,
-            document_models=[
-                Application,
-                Company,
-                ExternalApplication,
-                Location,
-                ProcessingQueue,
-                Resume,
-                User,
-                UserPreferences,
-                UserVacancy,
-                Vacancy,
-            ]
-        )
-    
-    async def disconnect(self):
-        if self.client:
-            self.client.close()
-
-
-db_config: DatabaseConfig = DatabaseConfig()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

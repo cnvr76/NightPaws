@@ -1,14 +1,13 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
-from typing import Optional
-from models.user_model import UserStatus
+from typing import Optional, Dict
+from models.user_model import UserRole
 
 
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
-    first_name: str = Field(..., min_length=3, max_length=50)
-    last_name: str = Field(..., min_length=3, max_length=50)
+    username: str = Field(..., min_length=3, max_length=50)
     avatar_url: Optional[str] = None
     
     @field_validator("password")
@@ -20,28 +19,31 @@ class UserCreate(BaseModel):
             raise ValueError('Password must contain number')
         return value
     
+
 class UserUpdate(BaseModel):
-    first_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    last_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    username: Optional[str] = Field(None, min_length=1, max_length=50)
+    work_email: Optional[str] = None
+    gmail_refresh_token: Optional[str] = None
     avatar_url: Optional[str] = None
+
 
 class UserResponse(BaseModel):
     id: str
     email: EmailStr
-    first_name: str
-    last_name: str
+    username: str
     avatar_url: Optional[str]
-    status: UserStatus
-    last_login: Optional[datetime]
+    role: UserRole
     created_at: datetime
-    updated_at: datetime
 
     model_config = {"from_attributes": True}
+
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+
 class UserLoginResponse(BaseModel):
     user: UserResponse
     message: str = "Login successful"
+    tokens: Dict[str, str]
