@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 from typing import Optional, Dict
+from uuid import UUID
 
 
 class UserCreate(BaseModel):
@@ -26,7 +27,7 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: str
+    id: UUID
     email: EmailStr
     username: str
     avatar_url: Optional[str]

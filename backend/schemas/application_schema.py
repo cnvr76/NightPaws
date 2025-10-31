@@ -1,7 +1,8 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
-from models.application_model import ApplicationStatus, ChainComponent
+from models import ApplicationStatus, ChainComponent
+from uuid import UUID
 
 
 class ApplicationCreate(BaseModel):
@@ -15,7 +16,7 @@ class ApplicationUpdate(BaseModel):
 
 
 class ApplicationResponse(BaseModel):
-    id: str
+    id: UUID
     user_id: str
     
     job_title: str
