@@ -9,6 +9,7 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=func.gen_random_uuid())
     username = Column(Text)
+    avatar_url = Column(Text),
     email = Column(Text, nullable=False, unique=True)
     password_hash = Column(Text, nullable=False)
     work_email = Column(Text)

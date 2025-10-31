@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 from typing import Optional, Dict
-from models.user_model import UserRole
 
 
 class UserCreate(BaseModel):
@@ -24,7 +23,6 @@ class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=1, max_length=50)
     work_email: Optional[str] = None
     gmail_refresh_token: Optional[str] = None
-    avatar_url: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -32,7 +30,6 @@ class UserResponse(BaseModel):
     email: EmailStr
     username: str
     avatar_url: Optional[str]
-    role: UserRole
     created_at: datetime
 
     model_config = {"from_attributes": True}
