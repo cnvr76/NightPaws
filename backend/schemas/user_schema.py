@@ -22,13 +22,14 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=1, max_length=50)
-    work_email: Optional[str] = None
+    work_email: Optional[EmailStr] = None
     gmail_refresh_token: Optional[str] = None
 
 
 class UserResponse(BaseModel):
     id: UUID
     email: EmailStr
+    work_email: Optional[EmailStr]
     username: str
     avatar_url: Optional[str]
     created_at: datetime
