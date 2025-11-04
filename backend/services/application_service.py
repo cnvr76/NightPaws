@@ -4,11 +4,7 @@ from sqlalchemy.orm import Session
 from schemas.application_schema import ApplicationUpdate, ApplicationCreate
 from models.application_model import Application
 from models.user_model import User
-from services.auth_service import UserDoesntExist
-
-
-class ApplicationAlreadyExists(Exception):
-    pass
+from scripts.exceptions import UserDoesntExist, ApplicationAlreadyExists
 
 
 class ApplicationService:

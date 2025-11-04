@@ -3,7 +3,13 @@ from jose import jwt
 from datetime import datetime, UTC, timedelta
 from dotenv import load_dotenv
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Tuple, Optional
+from schemas.user_schema import UserCreate, UserLogin, UserLoginResponse
+from models.user_model import User
+from sqlalchemy.orm import Session
+from scripts.exceptions import UserAlreadyExists, InvalidCredentials, RefreshTokenExpired, CredentialsValidationError
+from uuid import UUID
+from jose import JWTError
 
 
 load_dotenv()
@@ -15,28 +21,78 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS")) 
 
 
-class UserAlreadyExists(Exception):
-    def __init__(self):
-        self.message = ""
-        super().__init__(self.message)
-
-# so info can't be added for non-existing user (not signed-up one)
-class UserDoesntExist(Exception):
-    def __init__(self):
-        self.message: str = "User needs to be signed-up to before creating data for him"
-        super().__init__(self.message)
-
-
 class AuthService:
-    def get_password_hash(self, password: str) -> str:
+    def signup(self, signup_data: UserCreate, db: Session) -> User:
+        db_user_id: Optional[UUID] = db.query(User.id).filter(User.email == signup_data.email).first()
+        if db_user_id:
+            raise UserAlreadyExists()
+        
+        hashed_password: str = self._get_password_hash(signup_data.password)
+        user_dict = signup_data.model_dump()
+        user_dict.pop("password")
+
+        new_user = User(
+            **user_dict,
+            password_hash=hashed_password
+        )
+
+        db.add(new_user)
+        db.flush()
+        db.refresh(new_user)
+
+        return new_user
+    
+
+    def login(self, login_data: UserLogin, db: Session) -> Tuple[str, UserLoginResponse]:
+        user = db.query(User).filter(User.email == login_data.email).first()
+
+        if not user or not self._verify_password(login_data.password, user.password_hash):
+            raise InvalidCredentials()
+        
+        token_data = {"sub": user.email}
+        access_token: str = auth_service._create_access_token(token_data)
+        refresh_token: str = auth_service._create_refresh_token(token_data)
+
+        return (
+            refresh_token,
+            UserLoginResponse(
+                user=user,
+                tokens={"access_token": access_token, "token_type": "bearer"}
+            ),
+        )
+    
+
+    def refresh(self, refresh_token: str, db: Session) -> UserLoginResponse:
+        if not refresh_token:
+            raise RefreshTokenExpired()
+
+        payload = self._validate_refresh_token(refresh_token)
+        email: str = payload.get("sub")
+        if email is None:
+            raise CredentialsValidationError()
+        
+        user = db.query(User).filter(User.email == email).first()
+        if user is None:
+            raise CredentialsValidationError()
+        
+        new_token_data = {"sub": user.email}
+        new_access_token: str = auth_service._create_access_token(new_token_data)
+
+        return UserLoginResponse(
+            user=user,
+            tokens={"access_token": new_access_token, "token_type": "bearer"}
+        )
+
+
+    def _get_password_hash(self, password: str) -> str:
         return generate_password_hash(password)
     
 
-    def verify_password(self, plain_password: str, password_hash: str) -> bool:
+    def _verify_password(self, plain_password: str, password_hash: str) -> bool:
         return check_password_hash(password_hash, plain_password)
     
 
-    def create_access_token(self, data: Dict) -> str:
+    def _create_access_token(self, data: Dict) -> str:
         to_encode: Dict = data.copy()
         expire: datetime = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         to_encode.update({"exp": expire})
@@ -44,7 +100,7 @@ class AuthService:
         return encoded_jwt
     
     
-    def create_refresh_token(self, data: Dict) -> str:
+    def _create_refresh_token(self, data: Dict) -> str:
         to_encode: Dict = data.copy()
         expire = datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         to_encode.update({"exp": expire})
@@ -52,8 +108,11 @@ class AuthService:
         return encoded_jwt
     
 
-    def validate_refresh_token(self, refresh_token: str) -> Dict[str, Any]:
-        return jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+    def _validate_refresh_token(self, refresh_token: str) -> Dict[str, Any]:
+        try:
+            return jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        except JWTError:
+            raise CredentialsValidationError()
 
 
 auth_service: AuthService = AuthService()
