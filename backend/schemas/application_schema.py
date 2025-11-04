@@ -17,7 +17,7 @@ class ApplicationUpdate(BaseModel):
 
 class ApplicationResponse(BaseModel):
     id: UUID
-    user_id: str
+    user_id: UUID
     
     job_title: str
     company_name: str

@@ -15,6 +15,18 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS")) 
 
 
+class UserAlreadyExists(Exception):
+    def __init__(self):
+        self.message = ""
+        super().__init__(self.message)
+
+# so info can't be added for non-existing user (not signed-up one)
+class UserDoesntExist(Exception):
+    def __init__(self):
+        self.message: str = "User needs to be signed-up to before creating data for him"
+        super().__init__(self.message)
+
+
 class AuthService:
     def get_password_hash(self, password: str) -> str:
         return generate_password_hash(password)

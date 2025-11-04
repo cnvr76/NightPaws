@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post("/singup", response_model=UserResponse)
 async def signup(signup_data: UserCreate, db: Session = Depends(get_db)):
     try:
-        db_user = db.query(User).filter(User.email == signup_data.email).first()
+        db_user = db.query(User.id).filter(User.email == signup_data.email).first()
         if db_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
