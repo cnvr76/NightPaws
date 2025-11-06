@@ -1,3 +1,6 @@
+# secret jsons
+*.com.json
+
 # sqltools
 *.vscode
 *.sql

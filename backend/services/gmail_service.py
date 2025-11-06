@@ -1,0 +1,94 @@
+from typing import Optional, List, Dict, Any
+from sqlalchemy.orm import Session
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build, Resource
+from config.gmail import google_config, SCOPES, REDIRECT_URI, fernet_cipher
+from models import User
+from scripts.exceptions import GmailRefreshTokenMissing, UnableToDecryptGmailRefreshToken
+
+
+class GmailService:
+    def __init__(self) -> None:
+        self.flow = Flow.from_client_config(
+            client_config=google_config,
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI
+        )
+
+    
+    def get_google_auth_url(self, state: str) -> str:
+        auth_url, _ = self.flow.authorization_url(
+            access_type="offline",
+            prompt="consent",
+            state=state
+        )
+        return auth_url
+    
+
+    def process_google_callback(self, auth_code: str, user: User, db: Session) -> None:
+        self.flow.fetch_token(code=auth_code)
+        
+        refresh_token: Optional[str] = self.flow.credentials.refresh_token
+        if not refresh_token:
+            # refresh_token not accepted, maybe its was already given
+            return
+        
+        encrypted_token: bytes = fernet_cipher.encrypt(refresh_token.encode())
+        user.gmail_refresh_token = encrypted_token.decode()
+        db.add(user)
+        db.flush()
+
+    
+    def search_email(self, user: User, search_query: str) -> List[Dict]:
+        encrypted_token: Optional[str] = user.gmail_refresh_token
+        if not encrypted_token:
+            raise GmailRefreshTokenMissing()
+        
+        try:
+            refresh_token: str = fernet_cipher.decrypt(encrypted_token.encode()).decode()
+        except Exception:
+            raise UnableToDecryptGmailRefreshToken()
+        
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri=self.flow.client_config['token_uri'],
+            client_id=self.flow.client_config['client_id'],
+            client_secret=self.flow.client_config['client_secret'],
+            scopes=SCOPES
+        )
+
+        service: Resource = build("gmail", "v1", credentials=creds, static_discovery=False)
+        results = service.users().messages().list(
+            userId="me",
+            q=search_query,
+            maxResults=5
+        ).execute()
+
+        message_ids: List[Dict] = results.get("messages", [])
+        if not message_ids:
+            return []
+        
+        detailed_messages: List[Dict] = []
+        
+        for msg_id_data in message_ids:
+            msg_id = msg_id_data['id']
+            
+            # Робимо запит на 'get', але просимо тільки 'metadata'
+            # Це дасть нам 'snippet' і 'headers' (де є 'From', 'Date')
+            message_data = service.users().messages().get(
+                userId="me", 
+                id=msg_id,
+                format="metadata"
+            ).execute()
+            
+            # Тепер message_data - це повний об'єкт листа
+            # (без тіла, але нам і не треба)
+            detailed_messages.append(message_data)
+        
+        # TODO - extract needed info from messages
+        return detailed_messages
+
+
+gmail_service: GmailService = GmailService()

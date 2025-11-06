@@ -40,3 +40,15 @@ class CredentialsValidationError(CustomException):
 class ApplicationAlreadyExists(CustomException):
     def __init__(self, detail: str):
         super().__init__(detail, status.HTTP_403_FORBIDDEN)
+
+
+# --- GMAIL exceptions ---
+class GmailRefreshTokenMissing(CustomException):
+    def __init__(self):
+        self.detail: str = "User was not given a gmail refresh token"
+        super().__init__(self.detail, status.HTTP_401_UNAUTHORIZED)
+
+class UnableToDecryptGmailRefreshToken(CustomException):
+    def __init__(self):
+        self.detail: str = "Unable to decrypt gmail token"
+        super().__init__(self.detail, status.HTTP_409_CONFLICT)

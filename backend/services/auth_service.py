@@ -62,11 +62,11 @@ class AuthService:
         )
     
 
-    def refresh(self, refresh_token: str, db: Session) -> UserLoginResponse:
+    def refresh(self, refresh_token: str, db: Session) -> Tuple[User, Dict]:
         if not refresh_token:
             raise RefreshTokenExpired()
 
-        payload = self._validate_refresh_token(refresh_token)
+        payload = self._validate_token(refresh_token)
         email: str = payload.get("sub")
         if email is None:
             raise CredentialsValidationError()
@@ -78,10 +78,23 @@ class AuthService:
         new_token_data = {"sub": user.email}
         new_access_token: str = auth_service._create_access_token(new_token_data)
 
-        return UserLoginResponse(
-            user=user,
-            tokens={"access_token": new_access_token, "token_type": "bearer"}
-        )
+        return user, {"access_token": new_access_token, "token_type": "bearer"}
+    
+
+    def get_current_user(self, token: str, db: Session) -> User:
+        try:
+            payload = self._validate_token(token)
+            email: str = payload.get("sub")
+            if email is None:
+                raise CredentialsValidationError()
+        except JWTError:
+            raise CredentialsValidationError()
+        
+        user = db.query(User).filter(User.email == email).first()
+        if user is None:
+            raise CredentialsValidationError()
+        
+        return user
 
 
     def _get_password_hash(self, password: str) -> str:
@@ -108,7 +121,7 @@ class AuthService:
         return encoded_jwt
     
 
-    def _validate_refresh_token(self, refresh_token: str) -> Dict[str, Any]:
+    def _validate_token(self, refresh_token: str) -> Dict[str, Any]:
         try:
             return jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         except JWTError:

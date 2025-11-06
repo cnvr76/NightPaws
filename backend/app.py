@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+import logging, sys
 
 from scripts.exceptions import CustomException
 
@@ -22,7 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(application_router, prefix="/applications", tags=["applications"])
-app.include_router(user_router, prefix="/users", tags=["users"])
+app.include_router(user_router, prefix="/user", tags=["users"])
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 
