@@ -29,8 +29,8 @@ async def register_new_application(application_data: ApplicationCreate, db: Sess
     return new_application
     
 
-@router.delete("/{appl_id}/delete", status_code=200)
-async def delete_application_by_id(appl_id: UUID, db: Session = Depends(get_db)):
+@router.delete("/my/{appl_id}/delete", status_code=200)
+async def delete_application_by_id(appl_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     deleted_rows: int = application_service.delete_application(appl_id, db)
     db.commit()
     return {
@@ -39,8 +39,9 @@ async def delete_application_by_id(appl_id: UUID, db: Session = Depends(get_db))
     }
     
 
-@router.patch("/{appl_id}/update", response_model=ApplicationResponse)
-async def update_application_info(appl_id: UUID, new_application_data: ApplicationUpdate, db: Session = Depends(get_db)):
+@router.patch("/my/{appl_id}/update", response_model=ApplicationResponse)
+async def update_application_info(appl_id: UUID, new_application_data: ApplicationUpdate,
+                                   db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     updated_application: Application = application_service.update_application(appl_id, new_application_data, db)
     db.commit()
     return updated_application
