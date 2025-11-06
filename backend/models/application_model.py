@@ -22,6 +22,7 @@ class ChainComponent(TypedDict):
     message_id: str
     thread_id: str
     sender: str
+    subject: str
     snippet: str
     received_at: datetime
 
