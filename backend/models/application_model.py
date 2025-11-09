@@ -24,6 +24,7 @@ class ChainComponent(TypedDict):
     sender: str
     subject: str
     snippet: str
+    status: ApplicationStatus
     received_at: datetime
 
 

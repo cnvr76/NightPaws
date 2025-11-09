@@ -52,3 +52,9 @@ class UnableToDecryptGmailRefreshToken(CustomException):
     def __init__(self):
         self.detail: str = "Unable to decrypt gmail token"
         super().__init__(self.detail, status.HTTP_409_CONFLICT)
+
+
+class InvalidCRONSecret(CustomException):
+    def __init__(self):
+        self.detail: str = "Invalid CRON secret"
+        super().__init__(self.detail, status.HTTP_401_UNAUTHORIZED)

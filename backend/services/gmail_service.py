@@ -26,6 +26,14 @@ class GmailService:
         return auth_url
     
 
+    def _decrypt_token(self, encrypted_token: str) -> str:
+        return fernet_cipher.decrypt(encrypted_token.encode()).decode()
+    
+
+    def _encrypt_token(self, token: str) -> str:
+        return fernet_cipher.encrypt(token.encode()).decode()
+    
+
     def process_google_callback(self, auth_code: str, user: User, db: Session) -> None:
         self.flow.fetch_token(code=auth_code)
         
@@ -34,19 +42,18 @@ class GmailService:
             # refresh_token not accepted, maybe its was already given
             return
         
-        encrypted_token: bytes = fernet_cipher.encrypt(refresh_token.encode())
-        user.gmail_refresh_token = encrypted_token.decode()
+        user.gmail_refresh_token = self._encrypt_token(refresh_token)
         db.add(user)
         db.flush()
 
     
-    def search_email(self, user: User, search_query: str) -> List[Dict]:
+    def get_resource_service(self, user: User) -> Resource:
         encrypted_token: Optional[str] = user.gmail_refresh_token
         if not encrypted_token:
             raise GmailRefreshTokenMissing()
         
         try:
-            refresh_token: str = fernet_cipher.decrypt(encrypted_token.encode()).decode()
+            refresh_token: str = self._decrypt_token(encrypted_token)
         except Exception:
             raise UnableToDecryptGmailRefreshToken()
         
@@ -59,36 +66,7 @@ class GmailService:
             scopes=SCOPES
         )
 
-        service: Resource = build("gmail", "v1", credentials=creds, static_discovery=False)
-        results = service.users().messages().list(
-            userId="me",
-            q=search_query,
-            maxResults=5
-        ).execute()
-
-        message_ids: List[Dict] = results.get("messages", [])
-        if not message_ids:
-            return []
-        
-        detailed_messages: List[Dict] = []
-        
-        for msg_id_data in message_ids:
-            msg_id = msg_id_data['id']
-            
-            # Робимо запит на 'get', але просимо тільки 'metadata'
-            # Це дасть нам 'snippet' і 'headers' (де є 'From', 'Date')
-            message_data = service.users().messages().get(
-                userId="me", 
-                id=msg_id,
-                format="metadata"
-            ).execute()
-            
-            # Тепер message_data - це повний об'єкт листа
-            # (без тіла, але нам і не треба)
-            detailed_messages.append(message_data)
-        
-        # TODO - extract needed info from messages
-        return detailed_messages
+        return build("gmail", "v1", credentials=creds, static_discovery=False)
 
 
 gmail_service: GmailService = GmailService()

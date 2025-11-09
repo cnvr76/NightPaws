@@ -71,8 +71,3 @@ async def google_callback(code: str, state: str, db: Session = Depends(get_db)):
     db.commit()
 
     return RedirectResponse(url="http://localhost:5173/settings?gmail=success")
-
-
-@router.get("/test-gmail-search", response_model=List[Dict])
-async def test_gmail_search(q: str, current_user: User = Depends(get_current_user)):
-    return gmail_service.search_email(current_user, q)

@@ -8,6 +8,7 @@ from scripts.exceptions import CustomException
 from routes.application_route import router as application_router
 from routes.user_route import router as user_router
 from routes.auth_route import router as auth_router
+from routes.gmail_route import router as gmail_router
 
 
 app = FastAPI(
@@ -25,6 +26,7 @@ app.add_middleware(
 app.include_router(application_router, prefix="/applications", tags=["applications"])
 app.include_router(user_router, prefix="/user", tags=["users"])
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(gmail_router, prefix="/gmail", tags=["gmail"])
 
 
 @app.exception_handler(CustomException)
