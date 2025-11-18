@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
 from schemas.application_schema import ApplicationUpdate, ApplicationCreate
-from models.application_model import Application
+from models.application_model import Application, ApplicationStatus
 from models.user_model import User
 from scripts.exceptions import UserDoesntExist, ApplicationAlreadyExists
 
@@ -14,6 +14,12 @@ class ApplicationService:
 
     def get_users_applications(self, user_id: UUID, db: Session) -> List[Application]:
         return db.query(Application).filter(Application.user_id == user_id).all()
+    
+
+    # non rejected for cron updating
+    def get_active_applications(self, user_id: UUID, db: Session) -> List[Application]:
+        return db.query(Application).filter(Application.user_id == user_id, 
+                                            Application.current_status != ApplicationStatus.REJECTION.value).all()
     
 
     def register_new_application(self, user_id: UUID, data: ApplicationCreate, db: Session) -> Application:

@@ -17,11 +17,16 @@ class ApplicationStatus(str, Enum):
     OFFER = "offer"
     GHOSTED = "ghosted"
 
+    
+class SenderInfo(TypedDict):
+    name: str
+    email: str
+
 
 class ChainComponent(TypedDict):
     message_id: str
     thread_id: str
-    sender: str
+    sender: SenderInfo
     subject: str
     snippet: str
     status: ApplicationStatus

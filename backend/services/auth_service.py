@@ -121,9 +121,9 @@ class AuthService:
         return encoded_jwt
     
 
-    def _validate_token(self, refresh_token: str) -> Dict[str, Any]:
+    def _validate_token(self, token: str) -> Dict[str, Any]:
         try:
-            return jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         except JWTError:
             raise CredentialsValidationError()
 
