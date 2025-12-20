@@ -58,6 +58,7 @@ class ParsingService:
             
             unique_message_list.append(message_data)
 
+        unique_message_list.sort(key=lambda x: int(x['internalDate']), reverse=True)
         return unique_message_list
     
 
