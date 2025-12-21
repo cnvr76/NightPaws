@@ -40,7 +40,7 @@ async def test_gmail_search(current_user: User = Depends(get_current_user), db: 
     service = gmail_service.get_resource_service(current_user)
     application = application_service.get_active_applications(current_user.id, db)
     return {
-        "gmail": await parsing_service.process_application(service, application[0])
+        "gmail": await parsing_service.process_application(service, application[3])
     }
 
 

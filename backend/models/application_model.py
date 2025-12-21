@@ -28,7 +28,6 @@ class ChainComponent(TypedDict):
     thread_id: str
     sender: SenderInfo
     subject: str
-    snippet: str
     status: ApplicationStatus
     received_at: datetime
 

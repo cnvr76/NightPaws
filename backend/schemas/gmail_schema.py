@@ -8,7 +8,6 @@ class GmailResponse(BaseModel):
     message_id: str
     thread_id: str
     subject: str
-    snippet: str
     body: str
     sender: SenderInfo
     received_at: datetime

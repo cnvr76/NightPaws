@@ -11,7 +11,7 @@ logger = Logger(__name__).configure()
 class QueryConstructor:
     def __init__(self) -> None:
         # convert to dict later for better performance
-        self.filters: str = f"-from:linkedin -from:profesia -from:jooble -from:djinni -category:promotions -list:matches"
+        self.filters: str = f"-from:linkedin -from:support@ -from:jooble -from:djinni -category:promotions -list:matches"
         self.skip_company_words = (
             "a.s.", "alerts", "alert", "job", "s.r.o.", "hr",
         )
