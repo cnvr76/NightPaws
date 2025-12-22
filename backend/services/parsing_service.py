@@ -1,18 +1,16 @@
-from models import User, Application
-from sqlalchemy.orm import Session
-from typing import List, Dict, Optional, Tuple, Set, Coroutine, Optional
+from models import Application
+from typing import List, Dict, Optional, Tuple, Set, Optional
 from scripts.exceptions import GmailRefreshTokenExpired
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import Resource
 from schemas.gmail_schema import GmailAnalyzedResponse, GmailResponse
 from services.ai_service import AIService
 from models import ChainComponent, Application
-from datetime import datetime
 import base64
 from config.logger import Logger
-import asyncio
 from services.query_contructor_service import QueryConstructor
 from email.utils import parseaddr, parsedate_to_datetime
+from bs4 import BeautifulSoup
 
 
 logger = Logger(__name__).configure()
@@ -24,34 +22,24 @@ class ParsingService:
         self.constructor = QueryConstructor()
 
 
-    async def process_application(self, service: Resource, application: Application): # -> ChainComponent:
+    def process_application(self, service: Resource, application: Application): # -> ChainComponent:
         q: Tuple[Optional[str], ...] = self.constructor.construct_queries(application)
         print(q)
         # TODO - everything else
-        raw_messages: List[Dict] = await self._execute_queries(service, *q)
+        raw_messages: List[Dict] = self._execute_queries(service, *q)
         messages: List[GmailResponse] = [self._parse_message(message) for message in raw_messages]
-        return messages
+        return {"vacancy": f"{application.company_name}: {application.job_title}", "messages": messages}
 
     
-    async def _execute_queries(self, service: Resource, *queries: str) -> List[Dict]:
-        tasks: List[Coroutine] = []
+    def _execute_queries(self, service: Resource, *queries: str) -> List[Dict]:
+        unique_message_ids: Set[str] = set()
         for q in queries:
             if not q: continue
-            tasks.append((
-                asyncio.to_thread(self._fetch_ids, service, q)
-            ))
+            results = self._fetch_ids(service, q)
+            for message in results:
+                unique_message_ids.add(message["id"])
 
-        all_results: List[List[Dict]] = await asyncio.gather(*tasks)
-
-        unique_message_ids: Set[str] = set()
         unique_message_list: List[Dict] = []
-
-        for message_list in all_results:
-            for message in message_list:
-                msg_id: str = message["id"]
-                if msg_id not in unique_message_ids:
-                    unique_message_ids.add(msg_id)
-        
         for msg_id in unique_message_ids:
             message_data = service.users().messages().get(
                 userId="me", 
@@ -82,20 +70,42 @@ class ParsingService:
 
 
     def __get_email_body(self, message: Dict) -> Optional[str]:
-        payload: Dict = message["payload"]
-        body_encoded: str = payload.get("body", {}).get("data")
-        if not body_encoded:
-            logger.info(f"Searching for body in parts for message with id={message['id']}")
-            parts: List[Dict] = payload.get("parts", [])
-            for part in parts:
-                mimetype: str = part.get("mimeType")
-                if mimetype == "text/plain":
-                    body_encoded = part.get("body", {}).get("data")
-                    break
-            if not body_encoded:
-                logger.info(f"message with id={message["id"]} doesn't contain a body")
-                return None
+        # payload -> body -> data
+        # !data => payload -> parts -> body -> data
+        # !data => parts -> parts -> body -> data
+        # ...
+
+        payload = message.get("payload", {})
+
+        queue = [payload]
+        while queue:
+            current_part: Dict = queue.pop(0)
+            mimetype: str = current_part.get("mimeType")
+            html: Optional[str] = None
+
+            if mimetype == "text/plain":
+                body_encoded = current_part.get("body", {}).get("data")
+                if body_encoded:
+                    return self.__decode_body(body_encoded, message["id"])
+                
+            elif mimetype == "text/html":
+                body_encoded = current_part.get("body", {}).get("data")
+                if body_encoded:
+                    html = self.__decode_body(body_encoded, message["id"])
+
+            if "parts" in current_part:
+                queue.extend(current_part["parts"])
+
+        if html:
+            soup = BeautifulSoup(html, "html.parser")
+            clean_text: str = soup.get_text(separator="\n", strip=True)
+            return clean_text
         
+        logger.info(f"message with id={message.get('id')} doesn't contain a text/plain or html body")
+        return None
+
+    
+    def __decode_body(self, body_encoded: str, msg_id: str) -> Optional[str]:
         padding = len(body_encoded) % 4
         if padding:
             body_encoded += "=" * (4 - padding)
@@ -108,7 +118,7 @@ class ParsingService:
                 return decoded_bytes.decode("latin-1")
                 
         except Exception as e:
-            logger.error(f"message with id={message['id']} critical decoding error: {e}")
+            logger.error(f"message with id={msg_id} has critical decoding error: {e}")
             try:
                  return base64.urlsafe_b64decode(body_encoded).decode("utf-8", errors="replace")
             except:
@@ -143,7 +153,7 @@ class ParsingService:
         )
     
 
-    def _filter_messages(self, messages: List[GmailResponse]) -> List[GmailResponse]:
+    def _filter_messages(self, application: Application, messages: List[GmailResponse]) -> List[GmailResponse]:
         pass
 
 

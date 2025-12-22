@@ -16,6 +16,7 @@ class ApplicationStatus(str, Enum):
     TEST_TASK = "test_task"
     OFFER = "offer"
     GHOSTED = "ghosted"
+    UNKNOWN  = "unknown"
 
     
 class SenderInfo(TypedDict):

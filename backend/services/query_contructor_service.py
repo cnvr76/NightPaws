@@ -70,7 +70,7 @@ class QueryConstructor:
         # from:hyperia {filters} in:inbox - full company name, not just the first word
         clean_company: str = self.__get_clean_string(application.company_name, self.skip_company_words)
         company_query: str = clean_company
-        if full_name:
+        if not full_name:
             clean_company_words: List[str] = clean_company.split()
             company_query = clean_company_words[0]
         

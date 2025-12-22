@@ -11,6 +11,9 @@ from dotenv import load_dotenv
 import os
 from scripts.exceptions import InvalidCRONSecret
 from googleapiclient.discovery import Resource
+import asyncio
+from models import Application
+from schemas import GmailResponse
 
 
 load_dotenv()
@@ -37,10 +40,16 @@ async def sync_my_applications(current_user: User = Depends(get_current_user), d
 
 @router.get("/test-gmail-search", status_code=200)
 async def test_gmail_search(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    service = gmail_service.get_resource_service(current_user)
-    application = application_service.get_active_applications(current_user.id, db)
+    applications = application_service.get_active_applications(current_user.id, db)
+    
+    def thread_task(application: Application) -> List[GmailResponse]:
+        local_service: Resource = gmail_service.get_resource_service(current_user)
+        return parsing_service.process_application(local_service, application)
+
+    tasks = [asyncio.to_thread(thread_task, app) for app in applications]
+    response = await asyncio.gather(*tasks)
     return {
-        "gmail": await parsing_service.process_application(service, application[3])
+        "gmail": response
     }
 
 
