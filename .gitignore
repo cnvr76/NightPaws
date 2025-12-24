@@ -1,6 +1,9 @@
 # tests
 tests
 
+# ai training
+training_data
+
 # secret jsons
 *.com.json
 

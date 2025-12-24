@@ -3,7 +3,6 @@ from sqlalchemy import Column, Text, func, Enum as SQLEnum, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from config.database import Base
 from enum import Enum
-import uuid
 from typing import TypedDict
 from datetime import datetime
 
@@ -15,8 +14,24 @@ class ApplicationStatus(str, Enum):
     INTERVIEW = "interview"
     TEST_TASK = "test_task"
     OFFER = "offer"
-    GHOSTED = "ghosted"
-    UNKNOWN  = "unknown"
+    OTHER  = "other"
+    GHOSTED = "ghosted" # <- database trigger
+
+
+class EmailStatus(str, Enum):
+    UPDATES = "updates"
+    REJECTION = "rejection"
+    INTERVIEW = "interview"
+    TEST_TASK = "test_task"
+    OFFER = "offer"
+    OTHER  = "other"
+    CONFIRMATION = "confirmation"
+    TRASH = "trash"
+    IRRELEVANT = "irrelevant"
+
+    @property
+    def is_valid(self) -> bool:
+        return self not in (EmailStatus.TRASH, EmailStatus.IRRELEVANT, EmailStatus.CONFIRMATION)
 
     
 class SenderInfo(TypedDict):

@@ -24,11 +24,12 @@ class ParsingService:
 
     def process_application(self, service: Resource, application: Application): # -> ChainComponent:
         q: Tuple[Optional[str], ...] = self.constructor.construct_queries(application)
-        print(q)
+        # print(q)
         # TODO - everything else
         raw_messages: List[Dict] = self._execute_queries(service, *q)
         messages: List[GmailResponse] = [self._parse_message(message) for message in raw_messages]
-        return {"vacancy": f"{application.company_name}: {application.job_title}", "messages": messages}
+        analysed_messages: List[GmailResponse] = self.ai.analyze(application, messages)
+        return {"vacancy": f"{application.company_name}: {application.job_title}", "messages": analysed_messages}
 
     
     def _execute_queries(self, service: Resource, *queries: str) -> List[Dict]:
@@ -98,7 +99,10 @@ class ParsingService:
 
         if html:
             soup = BeautifulSoup(html, "html.parser")
-            clean_text: str = soup.get_text(separator="\n", strip=True)
+            tags_to_delete = soup.find_all(["a", "img"])
+            for tag in tags_to_delete:
+                tag.decompose()
+            clean_text: str = soup.get_text(separator=" ", strip=True)
             return clean_text
         
         logger.info(f"message with id={message.get('id')} doesn't contain a text/plain or html body")
@@ -113,14 +117,14 @@ class ParsingService:
         try:
             decoded_bytes: bytes = base64.urlsafe_b64decode(body_encoded)
             try:
-                return decoded_bytes.decode("utf-8")
+                return decoded_bytes.decode("utf-8").replace("\r", "")
             except UnicodeDecodeError:
-                return decoded_bytes.decode("latin-1")
+                return decoded_bytes.decode("latin-1").replace("\r", "")
                 
         except Exception as e:
             logger.error(f"message with id={msg_id} has critical decoding error: {e}")
             try:
-                 return base64.urlsafe_b64decode(body_encoded).decode("utf-8", errors="replace")
+                 return base64.urlsafe_b64decode(body_encoded).decode("utf-8", errors="replace").replace("\r", "")
             except:
                  return None
         
@@ -151,10 +155,6 @@ class ParsingService:
             sender={"name": name, "email": email},
             received_at=parsedate_to_datetime(received_at)
         )
-    
-
-    def _filter_messages(self, application: Application, messages: List[GmailResponse]) -> List[GmailResponse]:
-        pass
 
 
     def _ai_analysis(self, message: GmailResponse) -> GmailAnalyzedResponse:
