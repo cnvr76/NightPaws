@@ -22,7 +22,6 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=1, max_length=50)
-    work_email: Optional[EmailStr] = None
     gmail_refresh_token: Optional[str] = None
 
 

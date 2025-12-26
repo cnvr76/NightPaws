@@ -17,7 +17,7 @@ async def get_applications(db: Session = Depends(get_db)):
     return application_service.get_all_applications(db)
     
 
-@router.get("/by-id", response_model=List[ApplicationResponse])
+@router.get("/my", response_model=List[ApplicationResponse])
 async def get_applications_for_user(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return application_service.get_users_applications(current_user.id, db)
     
@@ -39,7 +39,7 @@ async def delete_application_by_id(appl_id: UUID, db: Session = Depends(get_db),
     }
     
 
-@router.patch("/my/{appl_id}/update", response_model=ApplicationResponse)
+@router.put("/my/{appl_id}/update", response_model=ApplicationResponse)
 async def update_application_info(appl_id: UUID, new_application_data: ApplicationUpdate,
                                    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     updated_application: Application = application_service.update_application(appl_id, new_application_data, db)

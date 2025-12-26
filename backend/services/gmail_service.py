@@ -42,6 +42,12 @@ class GmailService:
             # refresh_token not accepted, maybe its was already given
             return
         
+        session = self.flow.authorized_session()
+        profile_info: Dict = session.get("https://www.googleapis.com/userinfo/v2/me").json()
+        connected_email: str = profile_info.get("email")
+        if connected_email:
+            user.work_email = connected_email
+        
         user.gmail_refresh_token = self._encrypt_token(refresh_token)
         db.add(user)
         db.flush()

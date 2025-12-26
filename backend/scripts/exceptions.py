@@ -8,10 +8,17 @@ class CustomException(Exception):
         super().__init__(self.detail)
 
 
+# --- USER exceptions ---
+class MissingWorkEmail(CustomException):
+    def __init__(self):
+        self.detail: str = "Work email missing, add it before fetching gmail"
+        super().__init__(self.detail, status.HTTP_404_NOT_FOUND)
+
+
 # --- AUTH exceptions ---
 class UserAlreadyExists(CustomException):
     def __init__(self):
-        self.detail = "User already exists"
+        self.detail: str = "User already exists"
         super().__init__(self.detail, status.HTTP_409_CONFLICT)
 
 # so info can't be added for non-existing user (not signed-up one)

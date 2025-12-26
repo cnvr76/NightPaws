@@ -22,14 +22,19 @@ class ParsingService:
         self.constructor = QueryConstructor()
 
 
-    def process_application(self, service: Resource, application: Application): # -> ChainComponent:
+    def process_application(self, service: Resource, application: Application) -> Optional[List[ChainComponent]]:
         q: Tuple[Optional[str], ...] = self.constructor.construct_queries(application)
-        # print(q)
-        # TODO - everything else
+
         raw_messages: List[Dict] = self._execute_queries(service, *q)
         messages: List[GmailResponse] = [self._parse_message(message) for message in raw_messages]
-        analysed_messages: List[GmailResponse] = self.ai.analyze(application, messages)
-        return {"vacancy": f"{application.company_name}: {application.job_title}", "messages": analysed_messages}
+        analysed_messages: List[GmailAnalyzedResponse] = self.ai.analyze(application, messages)
+        
+        if len(analysed_messages) == 0:
+            return None
+        
+        components: List[ChainComponent] = [ChainComponent(**msg.model_dump(exclude={"body"})) for msg in analysed_messages]
+        return components
+        # return {"vacancy": f"{application.company_name}: {application.job_title}", "messages": analysed_messages}
 
     
     def _execute_queries(self, service: Resource, *queries: str) -> List[Dict]:
@@ -62,12 +67,13 @@ class ParsingService:
                 q=q,
                 maxResults=10,
             ).execute()
+            return results.get("messages", []) # only message ids
         except RefreshError:
             raise GmailRefreshTokenExpired()
         except Exception as e:
             logger.error(f"Error fetching messages from gmail {q=}: {e}")
-        finally:
-            return results.get("messages", []) # only message ids
+            return []
+            
 
 
     def __get_email_body(self, message: Dict) -> Optional[str]:

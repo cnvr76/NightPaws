@@ -12,6 +12,7 @@ class ApplicationCreate(BaseModel):
 
 
 class ApplicationUpdate(BaseModel):
+    new_emails: Optional[List[ChainComponent]] = None
     current_status: Optional[ApplicationStatus] = None 
 
 

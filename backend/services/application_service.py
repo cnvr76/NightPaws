@@ -1,10 +1,10 @@
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
-from schemas.application_schema import ApplicationUpdate, ApplicationCreate
-from models.application_model import Application, ApplicationStatus
-from models.user_model import User
+from schemas import ApplicationUpdate, ApplicationCreate
+from models import User, Application, ApplicationStatus, ChainComponent
 from scripts.exceptions import UserDoesntExist, ApplicationAlreadyExists
+from datetime import datetime
 
 
 class ApplicationService:
@@ -17,7 +17,7 @@ class ApplicationService:
     
 
     # non rejected for cron updating
-    def get_active_applications(self, user_id: UUID, db: Session) -> List[Application]:
+    def get_users_active_applications(self, user_id: UUID, db: Session) -> List[Application]:
         return db.query(Application).filter(Application.user_id == user_id, 
                                             Application.current_status != ApplicationStatus.REJECTION.value).all()
     
@@ -45,7 +45,7 @@ class ApplicationService:
         db.refresh(new_application)
 
         return new_application
-
+    
 
     def update_application(self, appl_id: UUID, new_data: ApplicationUpdate, db: Session) -> Application:
         application: Application = db.query(Application).filter(Application.id == appl_id).first()
@@ -53,6 +53,35 @@ class ApplicationService:
         update_data: Dict[str, Any] = new_data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(application, key, value)
+
+        db.add(application)
+        db.flush()
+        db.refresh(application)
+
+        return application
+
+
+    def add_email_components(self, appl_id: UUID, new_data: ApplicationUpdate, db: Session) -> Application:
+        application: Application = db.query(Application).filter(Application.id == appl_id).first()
+
+        email_ids_map: Dict[str, ChainComponent] = {comp["message_id"]: comp for comp in application.email_chain}        
+        if new_data.new_emails:
+            for msg in new_data.new_emails:
+                if isinstance(msg["received_at"], datetime):
+                    msg["received_at"] = msg["received_at"].isoformat()
+                email_ids_map[msg["message_id"]] = msg
+
+        components: List[ChainComponent] = list(email_ids_map.values())
+        components.sort(key=lambda c: c["received_at"], reverse=True)
+
+        current_status: ApplicationStatus = application.current_status
+        if components:
+            # TODO - if last message is REJECCTION, then it should stay like that and don't change
+            # but then there should be good email filtration to remoce IRRELEVANT messsages
+            current_status = components[0]["status"]
+        
+        application.email_chain = components
+        application.current_status = current_status
 
         db.add(application)
         db.flush()
