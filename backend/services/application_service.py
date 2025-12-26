@@ -61,12 +61,12 @@ class ApplicationService:
         return application
 
 
-    def add_email_components(self, appl_id: UUID, new_data: ApplicationUpdate, db: Session) -> Application:
+    def add_email_components(self, appl_id: UUID, new_data: Optional[List[ChainComponent]], db: Session) -> Application:
         application: Application = db.query(Application).filter(Application.id == appl_id).first()
 
         email_ids_map: Dict[str, ChainComponent] = {comp["message_id"]: comp for comp in application.email_chain}        
-        if new_data.new_emails:
-            for msg in new_data.new_emails:
+        if new_data:
+            for msg in new_data:
                 if isinstance(msg["received_at"], datetime):
                     msg["received_at"] = msg["received_at"].isoformat()
                 email_ids_map[msg["message_id"]] = msg

@@ -27,7 +27,7 @@ class ParsingService:
 
         raw_messages: List[Dict] = self._execute_queries(service, *q)
         messages: List[GmailResponse] = [self._parse_message(message) for message in raw_messages]
-        analysed_messages: List[GmailAnalyzedResponse] = self.ai.analyze(application, messages)
+        analysed_messages: List[GmailAnalyzedResponse] = self.ai.analyze(messages)
         
         if len(analysed_messages) == 0:
             return None
@@ -161,14 +161,6 @@ class ParsingService:
             sender={"name": name, "email": email},
             received_at=parsedate_to_datetime(received_at)
         )
-
-
-    def _ai_analysis(self, message: GmailResponse) -> GmailAnalyzedResponse:
-        pass
-
-
-    def _make_chain_component(self, message: GmailAnalyzedResponse) -> ChainComponent:
-        pass
     
 
 parsing_service: ParsingService = ParsingService()

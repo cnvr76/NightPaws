@@ -62,8 +62,7 @@ async def sync_my_applications(current_user: User = Depends(get_current_user), d
             continue
         
         try:
-            new_data = ApplicationUpdate(new_emails=result)
-            saved_application: Application = application_service.add_email_components(application.id, new_data, db)
+            saved_application: Application = application_service.add_email_components(application.id, result, db)
             saved_applications.append(saved_application)
         except Exception as e:
             logger.error(f"DB error saving application {application.id}: {e}")

@@ -1,5 +1,5 @@
 from schemas.gmail_schema import GmailAnalyzedResponse, GmailResponse
-from models import EmailStatus, Application
+from models import EmailStatus
 from typing import List
 from config.logger import Logger
 from setfit import SetFitModel
@@ -28,7 +28,7 @@ class AIService:
         
         self.lock = threading.Lock()
 
-    def analyze(self, application: Application, messages: List[GmailResponse]) -> List[GmailAnalyzedResponse]:
+    def analyze(self, messages: List[GmailResponse]) -> List[GmailAnalyzedResponse]:
         if not messages:
             return []
 

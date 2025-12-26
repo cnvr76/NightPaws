@@ -1,4 +1,4 @@
-from typing import List, Set, Dict, Tuple, Optional
+from typing import List, Set, Tuple, Optional
 from models import Application
 from config.logger import Logger
 from models import ChainComponent
@@ -13,16 +13,7 @@ class QueryConstructor:
         # convert to dict later for better performance
         self.filters: str = f"-from:linkedin -from:support@ -from:jooble -from:djinni -category:promotions -list:matches"
         self.skip_company_words = (
-            "a.s.", "alerts", "alert", "job", "s.r.o.", "hr",
-        )
-        self.skip_email_words = (
-             "noreply@", "jobs@", "careers@", "alerts", "alert",      
-        )
-        self.skip_body_words = (
-            "automated",
-        )
-        self.status_words = (
-            "unfortunately",
+            "a.s", "alerts", "alert", "job", "s.r.o", "hr",
         )
 
     
@@ -83,9 +74,10 @@ class QueryConstructor:
 
 
     def __get_clean_string(self, string: str, skip_words: Tuple[str, ...]) -> str:
+        string = string.lower()
         for word in skip_words:
             clean_string: str = string.replace(word, "")
-        return clean_string.strip().lower()
+        return clean_string.strip()
     
 
     def __get_date(self, application: Application) -> str:

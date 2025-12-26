@@ -10,11 +10,14 @@ from services.gmail_service import gmail_service
 from services.user_service import user_service
 from uuid import UUID
 from scripts.exceptions import UserDoesntExist
-from typing import List, Dict
 from config.gmail import bearer_scheme
+import os
+from dotenv import load_dotenv
 
 
+load_dotenv()
 router = APIRouter()
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme), db: Session = Depends(get_db)) -> User:
@@ -70,4 +73,4 @@ async def google_callback(code: str, state: str, db: Session = Depends(get_db)):
     gmail_service.process_google_callback(code, user_to_update, db)
     db.commit()
 
-    return RedirectResponse(url="http://localhost:5173/settings?gmail=success")
+    return RedirectResponse(url=f"{FRONTEND_URL}/settings?gmail=success")
