@@ -37,6 +37,13 @@ async def delete_application_by_id(appl_id: UUID, db: Session = Depends(get_db),
         "success": deleted_rows > 0,
         "deleted_rows": deleted_rows
     }
+
+
+@router.delete("/my/{appl_id}/message/{message_id}/delete", response_model=ApplicationResponse)
+async def delete_email_component(appl_id: UUID, message_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    updated_application: Application = application_service.delete_email(appl_id, message_id, current_user.id, db)
+    db.commit()
+    return updated_application
     
 
 @router.put("/my/{appl_id}/update", response_model=ApplicationResponse)

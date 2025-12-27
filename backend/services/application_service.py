@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from schemas import ApplicationUpdate, ApplicationCreate, GmailAnalyzedResponse
 from models import User, Application, ApplicationStatus, ChainComponent
 from scripts.exceptions import UserDoesntExist, ApplicationAlreadyExists, CustomException
@@ -29,7 +30,7 @@ class ApplicationService:
     def register_new_application(self, user_id: UUID, data: ApplicationCreate, db: Session) -> Application:
         existing_user: Optional[UUID] = db.query(User.id).filter(User.id == user_id).first()
         if not existing_user:
-            raise UserDoesntExist
+            raise UserDoesntExist()
         db_application_id: Optional[UUID] = db.query(Application.id).filter(Application.job_title == data.job_title,
                                                                       Application.company_name == data.company_name,
                                                                       Application.user_id == user_id).first()
@@ -64,7 +65,32 @@ class ApplicationService:
         db.refresh(application)
 
         return application
+    
 
+    def delete_email(self, appl_id: UUID, message_id: str, user_id: UUID, db: Session) -> Application:
+        application: Application = db.query(Application).filter(
+            Application.id == appl_id, Application.user_id == user_id,
+        ).first()
+        
+        updated_emails: List[ChainComponent] = [
+            message for message in application.email_chain
+            if message["message_id"] != message_id
+        ]
+
+        if not updated_emails:
+            application.current_status = ApplicationStatus.APPLIED
+        else:
+            updated_emails.sort(key=lambda c: c["received_at"], reverse=True)
+            application.current_status = updated_emails[0]["status"]
+
+        application.email_chain = updated_emails
+        
+        db.add(application)
+        db.flush()
+        db.refresh(application)
+
+        return application
+            
 
     def add_email_components(self, application: Application, new_data: Optional[List[ChainComponent]], db: Session) -> Application:
         if not new_data:
