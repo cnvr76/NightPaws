@@ -45,16 +45,30 @@ class ParsingService:
             results = self._fetch_ids(service, q)
             for message in results:
                 unique_message_ids.add(message["id"])
+                
 
         unique_message_list: List[Dict] = []
+        def batch_callback(request_id, response, exception):
+            if exception:
+                logger.error(f"Error fetching message in batch: {exception}")
+            else:
+                unique_message_list.append(response)
+        
+        batch = service.new_batch_http_request(callback=batch_callback)
+
         for msg_id in unique_message_ids:
-            message_data = service.users().messages().get(
+            request = service.users().messages().get(
                 userId="me", 
                 id=msg_id,
                 format="full"
-            ).execute()
+            )
+            batch.add(request)
             
-            unique_message_list.append(message_data)
+        try:
+            batch.execute()
+        except Exception as e:
+            logger.error(f"Batch execution failed: {e}")
+            raise e
 
         unique_message_list.sort(key=lambda x: int(x['internalDate']), reverse=True)
         return unique_message_list
