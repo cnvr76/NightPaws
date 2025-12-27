@@ -24,6 +24,16 @@ async def update_user_info(new_data: UserUpdate, db: Session = Depends(get_db), 
     return updated_user
 
 
+@router.delete("/me/delete", status_code=200)
+async def delete_me(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    deleted_rows: int = user_service.delete_user(current_user.id, db)
+    db.commit()
+    return {
+        "success": deleted_rows > 0,
+        "deleted_rows": deleted_rows
+    }
+
+
 # ADMIN ROUTES - comment out later when deploying
 # (or make get_admin dependency)
 @router.get("/", response_model=List[UserResponse])

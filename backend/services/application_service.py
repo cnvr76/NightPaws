@@ -51,8 +51,9 @@ class ApplicationService:
         return new_application
     
 
-    def update_application(self, appl_id: UUID, new_data: ApplicationUpdate, db: Session) -> Application:
-        application: Application = db.query(Application).filter(Application.id == appl_id).first()
+    def update_application(self, appl_id: UUID, user_id: UUID, new_data: ApplicationUpdate, db: Session) -> Application:
+        application: Application = db.query(Application).filter(Application.id == appl_id, 
+                                                                Application.user_id == user_id).first()
 
         update_data: Dict[str, Any] = new_data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
@@ -65,15 +66,15 @@ class ApplicationService:
         return application
 
 
-    def add_email_components(self, appl_id: UUID, new_data: Optional[List[ChainComponent]], db: Session) -> Application:
-        application: Application = db.query(Application).filter(Application.id == appl_id).first()
+    def add_email_components(self, application: Application, new_data: Optional[List[ChainComponent]], db: Session) -> Application:
+        if not new_data:
+            return application
 
-        email_ids_map: Dict[str, ChainComponent] = {comp["message_id"]: comp for comp in application.email_chain}        
-        if new_data:
-            for msg in new_data:
-                if isinstance(msg["received_at"], datetime):
-                    msg["received_at"] = msg["received_at"].isoformat()
-                email_ids_map[msg["message_id"]] = msg
+        email_ids_map: Dict[str, ChainComponent] = {comp["message_id"]: comp for comp in application.email_chain}       
+        for msg in new_data:
+            if isinstance(msg["received_at"], datetime):
+                msg["received_at"] = msg["received_at"].isoformat()
+            email_ids_map[msg["message_id"]] = msg
 
         components: List[ChainComponent] = list(email_ids_map.values())
         components.sort(key=lambda c: c["received_at"], reverse=True)
@@ -81,7 +82,7 @@ class ApplicationService:
         current_status: ApplicationStatus = application.current_status
         if components:
             # TODO - if last message is REJECCTION, then it should stay like that and don't change
-            # but then there should be good email filtration to remoce IRRELEVANT messsages
+            # but then there should be good email filtration to remove IRRELEVANT messsages
             current_status = components[0]["status"]
         
         application.email_chain = components
@@ -98,28 +99,30 @@ class ApplicationService:
         saved_applications: List[Application] = []
         
         for application, message in zip(applications, analysed_messages):
+            appl_id: UUID = application.id
             if isinstance(message, CustomException):
-                logger.error(f"(Custom) Error syncing application {application.id}: {message}")
+                logger.error(f"(Custom) Error syncing application {appl_id}: {message}")
                 raise message
             if isinstance(message, Exception):
-                logger.error(f"Error syncing application {application.id}: {message}")
+                logger.error(f"Error syncing application {appl_id}: {message}")
                 continue
             if not message:
                 saved_applications.append(application)
                 continue
             
             try:
-                saved_application: Application = self.add_email_components(application.id, message, db)
+                saved_application: Application = self.add_email_components(application, message, db)
                 saved_applications.append(saved_application)
             except Exception as e:
-                logger.error(f"DB error saving application {application.id}: {e}")
+                logger.error(f"DB error saving application {appl_id}: {e}")
                 saved_applications.append(application)
         
         return saved_applications
     
 
-    def delete_application(self, appl_id: UUID, db: Session) -> int:
-        return db.query(Application).filter(Application.id == appl_id).delete()
+    def delete_application(self, appl_id: UUID, user_id: UUID, db: Session) -> int:
+        return db.query(Application).filter(Application.id == appl_id, 
+                                            Application.user_id == user_id).delete()
 
 
 application_service: ApplicationService = ApplicationService()
