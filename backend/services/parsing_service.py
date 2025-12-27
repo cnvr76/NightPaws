@@ -24,6 +24,7 @@ class ParsingService:
 
     def process_application(self, service: Resource, application: Application) -> Optional[List[ChainComponent]]:
         q: Tuple[Optional[str], ...] = self.constructor.construct_queries(application)
+        # logger.info(" || ".join(q))
 
         raw_messages: List[Dict] = self._execute_queries(service, *q)
         messages: List[GmailResponse] = [self._parse_message(message) for message in raw_messages]

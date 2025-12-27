@@ -13,7 +13,7 @@ from scripts.exceptions import InvalidCRONSecret, MissingWorkEmail, CustomExcept
 from googleapiclient.discovery import Resource
 import asyncio
 from models import Application
-from schemas import GmailResponse, ApplicationUpdate, ApplicationResponse
+from schemas import ApplicationUpdate, ApplicationResponse, GmailAnalyzedResponse
 from config.logger import Logger
 
 
@@ -41,32 +41,8 @@ async def sync_my_applications(current_user: User = Depends(get_current_user), d
         raise MissingWorkEmail()
     
     applications: List[Application] = application_service.get_users_active_applications(current_user.id, db)
-
-    def thread_task(application: Application) -> List[GmailResponse]:
-        local_service: Resource = gmail_service.get_resource_service(current_user)
-        return parsing_service.process_application(local_service, application)
-
-    tasks = [asyncio.to_thread(thread_task, app) for app in applications]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    saved_applications: List[Application] = []
-    for application, result in zip(applications, results):
-        if isinstance(result, CustomException):
-            logger.error(f"(Custom) Error syncing application {application.id}: {result}")
-            raise result
-        if isinstance(result, Exception):
-            logger.error(f"Error syncing application {application.id}: {result}")
-            continue
-        if not result:
-            saved_applications.append(application)
-            continue
-        
-        try:
-            saved_application: Application = application_service.add_email_components(application.id, result, db)
-            saved_applications.append(saved_application)
-        except Exception as e:
-            logger.error(f"DB error saving application {application.id}: {e}")
-            saved_applications.append(application)
+    analysed_messages: List[GmailAnalyzedResponse] = await gmail_service.fetch(applications, current_user)
+    saved_applications: List[Application] = application_service.save_emails(applications, analysed_messages, db)
 
     db.commit()
     for appl in saved_applications:
@@ -75,19 +51,12 @@ async def sync_my_applications(current_user: User = Depends(get_current_user), d
     return saved_applications
 
 
-
 @router.get("/test-gmail-search", status_code=200)
 async def test_gmail_search(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    applications = application_service.get_users_active_applications(current_user.id, db)
+    applications = application_service.get_users_applications(current_user.id, db)
     
-    def thread_task(application: Application) -> List[GmailResponse]:
-        local_service: Resource = gmail_service.get_resource_service(current_user)
-        return parsing_service.process_application(local_service, application)
-
-    tasks = [asyncio.to_thread(thread_task, app) for app in applications]
-    response = await asyncio.gather(*tasks)
     return {
-        "gmail": response
+        "messages": await gmail_service.fetch(applications, current_user)
     }
 
 

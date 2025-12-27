@@ -12,9 +12,10 @@ class QueryConstructor:
     def __init__(self) -> None:
         # convert to dict later for better performance
         self.filters: str = f"-from:linkedin -from:support@ -from:jooble -from:djinni -category:promotions -list:matches"
-        self.skip_company_words = (
-            "a.s", "alerts", "alert", "job", "s.r.o", "hr",
-        )
+        self.skip_company_words: Set[str] = set((
+            "a.s", "a. s", "a.s.", "a. s.", "alerts", "alert", "job", 
+            "s.r.o", "s. r. o", "s.r.o.", "s. r. o.", "hr",
+        ))
 
     
     def construct_queries(self, application: Application) -> Tuple[Optional[str], ...]:
@@ -76,12 +77,12 @@ class QueryConstructor:
     def __get_clean_string(self, string: str, skip_words: Tuple[str, ...]) -> str:
         string = string.lower()
         for word in skip_words:
-            clean_string: str = string.replace(word, "")
-        return clean_string.strip()
+            string = string.replace(word, "")
+        return " ".join(string.split())
     
 
     def __get_date(self, application: Application) -> str:
-        last_date: datetime = application.email_chain[-1]["received_at"] if len(application.email_chain) > 0 else application.created_at
+        last_date: datetime = application.email_chain[0]["received_at"] if len(application.email_chain) > 0 else application.created_at
         return last_date.strftime('%Y/%m/%d')
     
 

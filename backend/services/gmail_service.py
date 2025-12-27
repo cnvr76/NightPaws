@@ -1,11 +1,14 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build, Resource
 from config.gmail import google_config, SCOPES, REDIRECT_URI, fernet_cipher
-from models import User
+from models import Application, User
 from scripts.exceptions import GmailRefreshTokenMissing, UnableToDecryptGmailRefreshToken
+from services.parsing_service import parsing_service
+from schemas import GmailAnalyzedResponse
+import asyncio
 
 
 class GmailService:
@@ -15,6 +18,17 @@ class GmailService:
             scopes=SCOPES,
             redirect_uri=REDIRECT_URI
         )
+
+
+    async def fetch(self, applications: List[Application], current_user: User) -> List[GmailAnalyzedResponse]:
+        def thread_task(application: Application) -> List[GmailAnalyzedResponse]:
+            local_service: Resource = self.get_resource_service(current_user)
+            return parsing_service.process_application(local_service, application)
+
+        tasks = [asyncio.to_thread(thread_task, app) for app in applications]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        return results
 
     
     def get_google_auth_url(self, state: str) -> str:

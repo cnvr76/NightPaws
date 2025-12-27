@@ -1,10 +1,14 @@
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
-from schemas import ApplicationUpdate, ApplicationCreate
+from schemas import ApplicationUpdate, ApplicationCreate, GmailAnalyzedResponse
 from models import User, Application, ApplicationStatus, ChainComponent
-from scripts.exceptions import UserDoesntExist, ApplicationAlreadyExists
+from scripts.exceptions import UserDoesntExist, ApplicationAlreadyExists, CustomException
 from datetime import datetime
+from config.logger import Logger
+
+
+logger = Logger(__name__).configure()
 
 
 class ApplicationService:
@@ -88,6 +92,30 @@ class ApplicationService:
         db.refresh(application)
 
         return application
+    
+
+    def save_emails(self, applications: List[Application], analysed_messages: List[GmailAnalyzedResponse], db: Session) -> List[Application]:
+        saved_applications: List[Application] = []
+        
+        for application, message in zip(applications, analysed_messages):
+            if isinstance(message, CustomException):
+                logger.error(f"(Custom) Error syncing application {application.id}: {message}")
+                raise message
+            if isinstance(message, Exception):
+                logger.error(f"Error syncing application {application.id}: {message}")
+                continue
+            if not message:
+                saved_applications.append(application)
+                continue
+            
+            try:
+                saved_application: Application = self.add_email_components(application.id, message, db)
+                saved_applications.append(saved_application)
+            except Exception as e:
+                logger.error(f"DB error saving application {application.id}: {e}")
+                saved_applications.append(application)
+        
+        return saved_applications
     
 
     def delete_application(self, appl_id: UUID, db: Session) -> int:
