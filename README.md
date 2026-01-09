@@ -6,12 +6,47 @@ The backend is built with FastAPI and AsyncIO to handle concurrent email queries
 
 ### Tech Stack
 
-    Core: Python, FastAPI, SQLAlchemy, PostgreSQL
+    Backend: Python, FastAPI, SQLAlchemy, PostgreSQL, Redis, Celery
 
-    Auth: Custom OAuth2 flow (Google), JWT, Cryptography (Fernet)
+    Frontend: React.js, Tailwind CSS
 
-    Concurrency: asyncio + asyncio.gather for parallel I/O operations
+    Auth: OAuth2, JWT, Fernet Cryptography
 
-    AI/ML: Hugging Face Transformers (bart-large-mnli) running locally
+    AI/ML: Hugging Face (SetFit), trained on personal emails
 
-    Infra: Docker, Railway (planned)
+### Current JSON Response Example
+``` json
+  {
+    "id": "2e631127-ed71-4204-a3f9-32e4a9a80029",
+    "user_id": "fd473ef0-f27b-40c8-b3b5-4a9a1fa1536b",
+    "job_title": "Junior Data Engineer",
+    "company_name": "Builtmind",
+    "current_status": "rejection",
+    "email_chain": [
+      {
+        "message_id": "197837356e4fd7bb",
+        "thread_id": "197837356e4fd7bb",
+        "sender": {
+          "name": "BuiltMind s.r.o. / cez profesia.sk",
+          "email": "web@profesia.sk"
+        },
+        "subject": "Vyjadrenie k Vášmu záujmu o pozíciu v BuiltMind ",
+        "status": "rejection",
+        "received_at": "2025-06-18T14:31:03Z"
+      },
+      {
+        "message_id": "19768bc0ba91faeb",
+        "thread_id": "19768bc0ba91faeb",
+        "sender": {
+          "name": "BuiltMind s.r.o. / cez profesia.sk",
+          "email": "web@profesia.sk"
+        },
+        "subject": "Zadanie",
+        "status": "test_task",
+        "received_at": "2025-06-13T10:00:42Z"
+      }
+    ],
+    "updated_at": "2026-01-09T02:12:45.071974+01:00",
+    "created_at": "2026-01-09T02:12:39.045492+01:00"
+  }
+```
