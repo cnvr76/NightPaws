@@ -43,6 +43,7 @@ class ParsingService:
         for q in queries:
             if not q: continue
             results = self._fetch_ids(service, q)
+            # logger.info(str(results))
             for message in results:
                 unique_message_ids.add(message["id"])
                 

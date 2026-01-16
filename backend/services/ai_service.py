@@ -1,6 +1,6 @@
 from schemas.gmail_schema import GmailAnalyzedResponse, GmailResponse
 from models import EmailStatus
-from typing import List
+from typing import List, Dict
 from config.logger import Logger
 from setfit import SetFitModel
 import json
@@ -12,14 +12,14 @@ logger = Logger(__name__).configure()
 
 class AIService:
     def __init__(self) -> None:
-        self.model_path = "training_data/my_email_classifier"
+        self.model_path: str = "training_data/my_email_classifier"
         logger.info(f"Loading custom model from {self.model_path}...")
         
         try:
-            self.model = SetFitModel.from_pretrained(self.model_path)
+            self.model: SetFitModel = SetFitModel.from_pretrained(self.model_path)
             
             with open(f"{self.model_path}/labels_map.json", "r") as f:
-                self.id2label = json.load(f)
+                self.id2label: Dict = json.load(f)
                 
             logger.info("Custom Model loaded!")
         except Exception as e:
@@ -37,9 +37,9 @@ class AIService:
         message_map: List[GmailResponse] = []
 
         for message in messages:
-            clean_body = " ".join(message.body.split()) if message.body else ""
+            clean_body: str = " ".join(message.body.split()) if message.body else ""
 
-            text = f"{message.subject}. {clean_body}"
+            text: str = f"{message.subject}. {clean_body}"
             inputs.append(text)
             message_map.append(message)
 
@@ -49,9 +49,9 @@ class AIService:
                 # probs = self.model.predict_proba(inputs)
 
             for i, label_id in enumerate(preds):
-                message = message_map[i]
+                message: GmailResponse = message_map[i]
                 
-                label_str = self.id2label[str(label_id.item())]
+                label_str: str = self.id2label[str(label_id.item())]
                 
                 try:
                     final_status = EmailStatus(label_str.lower())

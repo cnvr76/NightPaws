@@ -1,5 +1,5 @@
 from typing import List, Set, Tuple, Optional
-from models import Application
+from models import Application, SenderInfo
 from config.logger import Logger
 from models import ChainComponent
 from datetime import datetime
@@ -90,5 +90,7 @@ class QueryConstructor:
         chains: List[ChainComponent] = application.email_chain
         known_senders: Set[str] = set()
         for component in chains:
-            known_senders.add(component["sender"]["email"])
+            sender: SenderInfo = component["sender"]
+            known_senders.add(sender["email"])
+            known_senders.add(sender["name"])
         return known_senders

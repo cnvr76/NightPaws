@@ -59,5 +59,5 @@ model.save_pretrained("../training_data/my_email_classifier")
 print("Model saved to training_data/my_email_classifier")
 
 # Сохраняем маппинг меток, чтобы сервис знал, что 0 - это REJECTION
-with open("my_email_classifier/labels_map.json", "w") as f:
+with open("../training_data/my_email_classifier/labels_map.json", "w") as f:
     json.dump(id2label, f)

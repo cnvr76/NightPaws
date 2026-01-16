@@ -17,6 +17,11 @@ class ApplicationService:
         return db.query(Application).all()
     
 
+    def get_application_by_id(self, user_id: UUID, appl_id: UUID, db: Session) -> Application:
+        return db.query(Application).filter(Application.user_id == user_id,
+                                            Application.id == appl_id).first()
+    
+
     def get_users_applications(self, user_id: UUID, db: Session) -> List[Application]:
         return db.query(Application).filter(Application.user_id == user_id).all()
     

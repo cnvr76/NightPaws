@@ -15,6 +15,7 @@ import asyncio
 from models import Application
 from schemas import ApplicationUpdate, ApplicationResponse, GmailAnalyzedResponse
 from config.logger import Logger
+from uuid import UUID
 
 
 load_dotenv()
@@ -30,12 +31,12 @@ async def verify_cron(x_cron_secret: str = Header(None)) -> None:
         raise InvalidCRONSecret()
 
 
-@router.post("/sync/all-users", status_code=200)
+@router.get("/sync/all-users", status_code=200)
 async def sync_all_applications(db: Session = Depends(get_db), _secret: None = Depends(verify_cron)):
     pass
 
 
-@router.post("/sync/me", response_model=List[ApplicationResponse])
+@router.get("/sync/me", response_model=List[ApplicationResponse])
 async def sync_my_applications(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user.work_email:
         raise MissingWorkEmail()
@@ -60,10 +61,22 @@ async def test_gmail_search(current_user: User = Depends(get_current_user), db: 
     }
 
 
+@router.get("/sync/me/{appl_id}", response_model=ApplicationResponse)
+async def sync_specific_application(appl_id: UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    application: Application = application_service.get_application_by_id(current_user.id, appl_id, db)
+    analysed_messages: List[GmailAnalyzedResponse] = await gmail_service.fetch([application], current_user)
+    saved_application: Application = application_service.save_emails([application], analysed_messages, db)[0]
+
+    db.commit()
+    db.refresh(saved_application)
+
+    return saved_application
+
+
 @router.get("/execute-query", status_code=200)
-async def test_gmail_search(q: str, current_user: User = Depends(get_current_user)):
+async def execute_query(q: str, current_user: User = Depends(get_current_user)):
     service = gmail_service.get_resource_service(current_user)
     return {
         "query": q,
-        "gmail": await parsing_service._execute_queries(service, q)
+        "gmail": parsing_service._execute_queries(service, q)
     }
