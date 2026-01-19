@@ -3,6 +3,7 @@ tests
 
 # ai training
 training_data
+checkpoints
 
 # secret jsons
 *.com.json

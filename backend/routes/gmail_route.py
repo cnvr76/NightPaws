@@ -5,13 +5,11 @@ from routes.auth_route import get_current_user
 from services.gmail_service import gmail_service
 from services.parsing_service import parsing_service
 from services.application_service import application_service
-from models import User
+from models import User, ChainComponent
 from typing import List
 from dotenv import load_dotenv
 import os
 from scripts.exceptions import InvalidCRONSecret, MissingWorkEmail, CustomException
-from googleapiclient.discovery import Resource
-import asyncio
 from models import Application
 from schemas import ApplicationUpdate, ApplicationResponse, GmailAnalyzedResponse
 from config.logger import Logger
@@ -64,7 +62,7 @@ async def test_gmail_search(current_user: User = Depends(get_current_user), db: 
 @router.get("/sync/me/{appl_id}", response_model=ApplicationResponse)
 async def sync_specific_application(appl_id: UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     application: Application = application_service.get_application_by_id(current_user.id, appl_id, db)
-    analysed_messages: List[GmailAnalyzedResponse] = await gmail_service.fetch([application], current_user)
+    analysed_messages:  List[List[ChainComponent] | Exception | None] = await gmail_service.fetch([application], current_user)
     saved_application: Application = application_service.save_emails([application], analysed_messages, db)[0]
 
     db.commit()

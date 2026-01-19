@@ -70,6 +70,7 @@
     "Давайте созвонимся",
     "Когда вам удобно пообщаться?",
     "Приглашение на интервью",
+    "Приглашение: pohovor",
     "Ссылка на встречу в Zoom",
     "Ссылка на Google Meet"
   ],
@@ -94,6 +95,9 @@
   ],
   "TEST_TASK": [
     "Please complete the attached coding task",
+    "Thank you in advance for the time you will dedicate to completing it",
+    "As the next step, we are sharing our Case Study",
+    "Svoj výstup, odpovede prosím pripravte vo forme",
     "Here is the link to the technical assignment",
     "HackerRank test invitation",
     "Codility test",
@@ -121,7 +125,10 @@
     "Необходимо решить задачу на алгоритмы"
   ],
   "CONFIRMATION": [
+    "sme na stránke zaregistrovali Vašu reakciu na ponuku",
+    "Potvrdenie reakcie na ponuku",
     "We received your application",
+    "We confirm we successfully received your application for the job",
     "This is your confirmation email",
     "you have successfully submitted your answers",
     "Thank you for applying, we will review it shortly",
@@ -185,12 +192,14 @@
     "Обновленная ссылка",
     "Задержка с ответом",
     "Собеседование перенесено",
+    "Мероприятие отменено",
     "Встреча отменена",
     "Новое время созвона",
     "Процесс затягивается"
   ],
   "TRASH": [
     "others share their thoughts",
+    "New jobs match your preferences",
     "Automated confirmation message",
     "Your job alert",
     "recently posted",
@@ -209,6 +218,7 @@
     "Verify identity",
     "LinkedIn Job Alert",
     "Profesia.sk: New job matching your criteria",
+    "Pracovné ponuky e-mailom",
     "Nové pracovné ponuky",
     "Žiadosť o súhlas so spracováním údajov",
     "nových pracovných ponúk",

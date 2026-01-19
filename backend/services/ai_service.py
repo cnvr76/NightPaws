@@ -58,7 +58,7 @@ class AIService:
                 except ValueError:
                     final_status = EmailStatus.OTHER
 
-                logger.info(f"Msg {message.message_id} -> {final_status.value.upper()}")
+                logger.info(f"Msg {message.message_id} ({message.subject}) -> {final_status.value.upper()}")
 
                 if not final_status.is_valid:
                     continue

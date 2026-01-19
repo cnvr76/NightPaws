@@ -14,8 +14,12 @@ class ApplicationStatus(str, Enum):
     INTERVIEW = "interview"
     TEST_TASK = "test_task"
     OFFER = "offer"
-    OTHER  = "other"
-    GHOSTED = "ghosted" # <- database trigger
+    GHOSTED = "ghosted"
+    IGNORE = "ignore"
+    
+    @property
+    def is_syncable(self) -> bool:
+        return self not in (ApplicationStatus.REJECTION, ApplicationStatus.IGNORE, ApplicationStatus.OFFER)
 
 
 class EmailStatus(str, Enum):
@@ -24,7 +28,6 @@ class EmailStatus(str, Enum):
     INTERVIEW = "interview"
     TEST_TASK = "test_task"
     OFFER = "offer"
-    OTHER  = "other"
     CONFIRMATION = "confirmation"
     TRASH = "trash"
     IRRELEVANT = "irrelevant"

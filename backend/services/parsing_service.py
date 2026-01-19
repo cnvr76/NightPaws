@@ -1,5 +1,5 @@
 from models import Application
-from typing import List, Dict, Optional, Tuple, Set, Optional
+from typing import List, Dict, Optional, Tuple, Set, Optional, Iterable, Iterator
 from scripts.exceptions import GmailRefreshTokenExpired
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import Resource
@@ -24,7 +24,7 @@ class ParsingService:
 
     def process_application(self, service: Resource, application: Application) -> Optional[List[ChainComponent]]:
         q: Tuple[Optional[str], ...] = self.constructor.construct_queries(application)
-        # logger.info(" || ".join(q))
+        logger.info(" || ".join(query for query in q if query))
 
         raw_messages: List[Dict] = self._execute_queries(service, *q)
         messages: List[GmailResponse] = [self._parse_message(message) for message in raw_messages]
@@ -55,21 +55,26 @@ class ParsingService:
             else:
                 unique_message_list.append(response)
         
-        batch = service.new_batch_http_request(callback=batch_callback)
-
-        for msg_id in unique_message_ids:
-            request = service.users().messages().get(
-                userId="me", 
-                id=msg_id,
-                format="full"
-            )
-            batch.add(request)
+        BATCH_SIZE: int = 5
+        def chunked(iterable: Iterable[str]) -> Iterator[str]:
+            for i in range(0, len(iterable), BATCH_SIZE):
+                yield iterable[i:i+BATCH_SIZE]
+                
+        for chunk in chunked(list(unique_message_ids)):
+            batch = service.new_batch_http_request(callback=batch_callback)
             
-        try:
-            batch.execute()
-        except Exception as e:
-            logger.error(f"Batch execution failed: {e}")
-            raise e
+            for msg_id in chunk:
+                request = service.users().messages().get(
+                    userId="me", 
+                    id=msg_id,
+                    format="full"
+                )
+                batch.add(request)
+            
+            try:
+                batch.execute()
+            except Exception as e:
+                logger.error(f"Batch execution failed: {e}")
 
         unique_message_list.sort(key=lambda x: int(x['internalDate']), reverse=True)
         return unique_message_list
@@ -81,7 +86,7 @@ class ParsingService:
             results = service.users().messages().list(
                 userId="me",
                 q=q,
-                maxResults=10,
+                maxResults=50,
             ).execute()
             return results.get("messages", []) # only message ids
         except RefreshError:
@@ -89,7 +94,6 @@ class ParsingService:
         except Exception as e:
             logger.error(f"Error fetching messages from gmail {q=}: {e}")
             return []
-            
 
 
     def __get_email_body(self, message: Dict) -> Optional[str]:
