@@ -2,7 +2,7 @@ from typing import List, Set, Tuple, Optional
 from models import Application, SenderInfo
 from config.logger import Logger
 from models import ChainComponent
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 logger = Logger(__name__).configure()
@@ -10,7 +10,6 @@ logger = Logger(__name__).configure()
 
 class QueryConstructor:
     def __init__(self) -> None:
-        # convert to dict later for better performance
         self.platform_filters: str = "-from:linkedin -from:support@ -from:jooble -from:djinni"
         self.system_filters: str = "-category:social"
         self.filters: str = f"{self.platform_filters} {self.system_filters}"
@@ -28,7 +27,7 @@ class QueryConstructor:
 
 
     def _construct_wide_query(self, application: Application) -> Optional[str]:
-        # from:(hyperia.sk) AND ((hyperia) OR/AND (python OR developer OR študent)) AND in:inbox
+        # (from:Dasa.Noskovicova@adastragrp.com OR from:Noskovicova, Dasa OR from:Dasa Noskovicova) OR ((junior OR data OR analyst) AND adastra) AND -from:me + filters
         parts: List[str] = []
         
         known_senders: Set[str] = self.__get_known_senders(application) # maybe this won't be needed at all
@@ -54,14 +53,14 @@ class QueryConstructor:
 
         final_query: str = (
             f'{" OR ".join(parts)} '
-            # f'AND after:{self.__get_date(application)} '
+            f'AND after:{self.__get_date(application)} '
             f'AND -from:me {self.filters}'
         )
         return final_query
 
 
     def _construct_company_query(self, application: Application, full_name: bool = False) -> Optional[str]:
-        # from:hyperia {filters} in:inbox - full company name, not just the first word
+        # (subject:"adastra" OR subject:"adastra") OR from:adastra AND -from:me + filters
         clean_company: str = self.__get_clean_string(application.company_name, self.skip_company_words)
         company_query: str = clean_company
         if not full_name:
@@ -73,7 +72,7 @@ class QueryConstructor:
         final_query: str = (
             f'({subject_query}) OR '
             f'from:{company_query} '
-            # f'AND after:{self.__get_date(application)}'
+            f'AND after:{self.__get_date(application)}'
             f'AND -from:me {self.filters}'
         )
         return final_query
@@ -87,7 +86,8 @@ class QueryConstructor:
     
 
     def __get_date(self, application: Application) -> str:
-        last_date: datetime = application.email_chain[0]["received_at"] if len(application.email_chain) > 0 else application.created_at
+        last_date: datetime = application.email_chain[0]["received_at"] if len(application.email_chain) > 0 else application.applied_at
+        last_date = last_date - timedelta(days=1)
         return last_date.strftime('%Y/%m/%d')
     
 

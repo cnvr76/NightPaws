@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from schemas import ApplicationUpdate, ApplicationCreate
 from models import User, Application, ApplicationStatus, ChainComponent
 from scripts.exceptions import UserDoesntExist, ApplicationAlreadyExists, CustomException
@@ -41,30 +42,26 @@ class ApplicationService:
     
 
     def register_new_application(self, user_id: UUID, data: ApplicationCreate, db: Session) -> Application:
-        existing_user: Optional[UUID] = db.query(User.id).filter(User.id == user_id).first()
-        if not existing_user:
-            raise UserDoesntExist()
-        db_application_id: Optional[UUID] = db.query(Application.id).filter(
-            Application.job_title == data.job_title,
-            Application.company_name == data.company_name,
-            Application.user_id == user_id
-        ).first()
-        
-        if db_application_id:
-            raise ApplicationAlreadyExists(f"Application {data.job_title} from {data.company_name} already registered under your name.")
-
-        new_application = Application(
-            user_id=user_id,
-            company_name=data.company_name,
-            job_title=data.job_title,
-            current_status=data.current_status,
-            email_chain=[]
-        )
-        db.add(new_application)
-        db.flush()
-        db.refresh(new_application)
-
-        return new_application
+        processed_company: str = " ".join(data.company_name.split())
+        processed_title: str = " ".join(data.job_title.split())
+        try:
+            new_application = Application(
+                user_id=user_id,
+                company_name=processed_company,
+                job_title=processed_title,
+                current_status=data.current_status,
+                applied_at=data.apply_date,
+                email_chain=[]
+            )
+            db.add(new_application)
+            db.flush()
+            db.refresh(new_application)
+            return new_application
+        except IntegrityError:
+            raise ApplicationAlreadyExists(f"Application {processed_title} from {processed_company} already registered under your name.")
+        except Exception as e:
+            logger.error(f"Error while registering new application {processed_title} from {processed_company}: {e}")
+            raise e
     
 
     def update_application(self, appl_id: UUID, user_id: UUID, new_data: ApplicationUpdate, db: Session) -> Application:

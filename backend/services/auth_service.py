@@ -7,8 +7,10 @@ from typing import Dict, Any, Tuple, Optional
 from schemas.user_schema import UserCreate, UserLogin, UserLoginResponse
 from models.user_model import User
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from scripts.exceptions import UserAlreadyExists, InvalidCredentials, RefreshTokenExpired, CredentialsValidationError
 from uuid import UUID
+from config.logger import Logger
 from jose import JWTError
 
 
@@ -21,26 +23,30 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS")) 
 
 
+logger = Logger(__name__).configure()
+
+
 class AuthService:
     def signup(self, signup_data: UserCreate, db: Session) -> User:
-        db_user_id: Optional[UUID] = db.query(User.id).filter(User.email == signup_data.email).first()
-        if db_user_id:
-            raise UserAlreadyExists()
-        
         hashed_password: str = self._get_password_hash(signup_data.password)
         user_dict = signup_data.model_dump()
         user_dict.pop("password")
+        try:
+            new_user = User(
+                **user_dict,
+                password_hash=hashed_password
+            )
 
-        new_user = User(
-            **user_dict,
-            password_hash=hashed_password
-        )
+            db.add(new_user)
+            db.flush()
+            db.refresh(new_user)
 
-        db.add(new_user)
-        db.flush()
-        db.refresh(new_user)
-
-        return new_user
+            return new_user
+        except IntegrityError:
+            raise UserAlreadyExists()
+        except Exception as e:
+            logger.error(f"Error while registering new user {signup_data.email}: {e}")
+            raise e
     
 
     def login(self, login_data: UserLogin, db: Session) -> Tuple[str, UserLoginResponse]:

@@ -33,5 +33,5 @@ app.include_router(gmail_router, prefix="/gmail", tags=["gmail"])
 async def custom_exception_handler(request: Request, exc: CustomException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail}
+        content={"detail": exc.detail, "success": False}
     )

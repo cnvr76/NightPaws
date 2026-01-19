@@ -7,6 +7,7 @@ from config.database import get_db
 from uuid import UUID
 from models import Application, User
 from routes.auth_route import get_current_user
+from scripts.exceptions import UserDoesntExist
 
 
 router = APIRouter()
@@ -24,6 +25,8 @@ async def get_applications_for_user(db: Session = Depends(get_db), current_user:
 
 @router.post("/new", response_model=ApplicationResponse)
 async def register_new_application(application_data: ApplicationCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not current_user:
+        raise UserDoesntExist()
     new_application: Application = application_service.register_new_application(current_user.id, application_data, db)
     db.commit()
     return new_application

@@ -7,9 +7,7 @@ from uuid import UUID
 
 
 class UserService:
-    def update_user_data(self, user_id: UUID, new_user_data: UserUpdate, db: Session) -> User:
-        user: User = self.get_user(user_id, db)
-        
+    def update_user_data(self, user: User, new_user_data: UserUpdate, db: Session) -> User:
         update_data: Dict[str, Any] = new_user_data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(user, key, value)
@@ -25,8 +23,8 @@ class UserService:
         return db.query(User).all()
 
     
-    def delete_user(self, user_id: UUID, db: Session) -> int:
-        return db.query(User).filter(User.id == user_id).delete()
+    def delete_user(self, user: User, db: Session) -> None:
+        return db.delete(user)
 
 
     def get_user(self, user_id: UUID, db: Session) -> User:

@@ -16,4 +16,4 @@ class User(Base):
     gmail_refresh_token = Column(Text)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
-    applications = relationship("Application", back_populates="user")
+    applications = relationship("Application", back_populates="user", cascade="all, delete-orphan")

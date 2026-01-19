@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, Field
+from datetime import datetime, date
 from typing import Optional, List
 from models import ApplicationStatus, ChainComponent
 from uuid import UUID
@@ -9,6 +9,7 @@ class ApplicationCreate(BaseModel):
     job_title: str
     company_name: str
     current_status: ApplicationStatus
+    apply_date: date = Field(default_factory=date.today)
 
 
 class ApplicationUpdate(BaseModel):
@@ -24,6 +25,7 @@ class ApplicationResponse(BaseModel):
     current_status: ApplicationStatus
     email_chain: List[ChainComponent]
     
+    applied_at: date
     updated_at: Optional[datetime]
     created_at: datetime
 

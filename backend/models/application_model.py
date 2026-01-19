@@ -1,5 +1,5 @@
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Text, func, Enum as SQLEnum, ForeignKey, DateTime, UniqueConstraint, text
+from sqlalchemy import Column, Text, func, Enum as SQLEnum, ForeignKey, DateTime, Date, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from config.database import Base
 from enum import Enum
@@ -63,6 +63,7 @@ class Application(Base):
     job_title = Column(Text, nullable=False)
     current_status = Column(statuses_enum, nullable=False)
     email_chain = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    applied_at = Column(Date, nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
