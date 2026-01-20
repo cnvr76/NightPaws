@@ -40,7 +40,7 @@ async def sync_my_applications(current_user: User = Depends(get_current_user), d
         raise MissingWorkEmail()
     
     applications: List[Application] = application_service.get_users_active_applications(current_user.id, db)
-    analysed_messages: List[GmailAnalyzedResponse] = await gmail_service.fetch(applications, current_user)
+    analysed_messages: List[List[ChainComponent] | Exception | None] = await gmail_service.fetch(applications, current_user)
     saved_applications: List[Application] = application_service.save_emails(applications, analysed_messages, db)
 
     db.commit()

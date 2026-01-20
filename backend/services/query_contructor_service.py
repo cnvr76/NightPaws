@@ -86,7 +86,8 @@ class QueryConstructor:
     
 
     def __get_date(self, application: Application) -> str:
-        last_date: datetime = application.email_chain[0]["received_at"] if len(application.email_chain) > 0 else application.applied_at
+        raw_date: str | datetime = application.email_chain[0]["received_at"] if len(application.email_chain) > 0 else application.applied_at
+        last_date: datetime = datetime.fromisoformat(raw_date) if isinstance(raw_date, str) else raw_date
         last_date = last_date - timedelta(days=1)
         return last_date.strftime('%Y/%m/%d')
     

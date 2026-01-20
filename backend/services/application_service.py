@@ -30,7 +30,7 @@ class ApplicationService:
 
     # non rejected for cron updating
     def get_users_active_applications(self, user_id: UUID, db: Session) -> List[Application]:
-        skip_statuses: List[ApplicationStatus] = [
+        skip_statuses: List[str] = [
             status.value
             for status in ApplicationStatus
             if not status.is_syncable
