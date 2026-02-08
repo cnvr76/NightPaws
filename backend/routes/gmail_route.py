@@ -5,6 +5,7 @@ from routes.auth_route import get_current_user
 from services.gmail_service import gmail_service
 from services.parsing_service import parsing_service
 from services.application_service import application_service
+from services.tasks_service import sync_user_data_task
 from models import User, ChainComponent
 from typing import List
 from dotenv import load_dotenv
@@ -13,7 +14,9 @@ from scripts.exceptions import InvalidCRONSecret, MissingWorkEmail, CustomExcept
 from models import Application
 from schemas import ApplicationUpdate, ApplicationResponse, GmailAnalyzedResponse
 from config.logger import Logger
+from config.celery_config import celery_app
 from uuid import UUID
+from celery.result import AsyncResult
 
 
 load_dotenv()
@@ -29,20 +32,36 @@ async def verify_cron(x_cron_secret: str = Header(None)) -> None:
         raise InvalidCRONSecret()
 
 
-@router.get("/sync/me", response_model=List[ApplicationResponse])
-async def sync_my_applications(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("/sync/status/{task_id}")
+async def get_task_status(task_id: str):
+    task_result = AsyncResult(task_id, app=celery_app)
+    result = {
+        "task_id": task_id,
+        "status": task_result.status,
+        "result": None
+    }
+    
+    if task_result.ready():
+        if task_result.successful():
+            result["result"] = task_result.result
+        else:
+            result["status"] = "FAILURE"
+            result["error"] = str(task_result.result)
+            
+    return result
+
+
+@router.post("/sync/me", status_code=202)
+async def sync_my_applications(current_user: User = Depends(get_current_user)):
     if not current_user.work_email:
         raise MissingWorkEmail()
     
-    applications: List[Application] = application_service.get_users_active_applications(current_user.id, db)
-    analysed_messages: List[List[ChainComponent] | Exception | None] = await gmail_service.fetch(applications, current_user)
-    saved_applications: List[Application] = application_service.save_emails(applications, analysed_messages, db)
-
-    db.commit()
-    for appl in saved_applications:
-        db.refresh(appl)
-
-    return saved_applications
+    task = sync_user_data_task.delay(str(current_user.id))
+    return {
+        "task_id": task.id,
+        "status": "queued",
+        "message": "Synchronization started in background"
+    }
 
 
 @router.get("/test-gmail-search", status_code=200)
@@ -54,6 +73,7 @@ async def test_gmail_search(current_user: User = Depends(get_current_user), db: 
     }
 
 
+# FIXME - when 0 emails -> breaks with 500
 @router.get("/sync/me/{appl_id}", response_model=ApplicationResponse)
 async def sync_specific_application(appl_id: UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     application: Application = application_service.get_application_by_id(current_user.id, appl_id, db)
