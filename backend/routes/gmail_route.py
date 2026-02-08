@@ -10,11 +10,12 @@ from models import User, ChainComponent
 from typing import List
 from dotenv import load_dotenv
 import os
-from scripts.exceptions import InvalidCRONSecret, MissingWorkEmail, CustomException
+from scripts.exceptions import InvalidCRONSecret, MissingWorkEmail, CustomException, TooManySyncRequests
 from models import Application
 from schemas import ApplicationUpdate, ApplicationResponse, GmailAnalyzedResponse
 from config.logger import Logger
 from config.celery_config import celery_app
+from config.redis_config import redis_client, SYNC_TIMEOUT
 from uuid import UUID
 from celery.result import AsyncResult
 
@@ -56,7 +57,17 @@ async def sync_my_applications(current_user: User = Depends(get_current_user)):
     if not current_user.work_email:
         raise MissingWorkEmail()
     
+    lock_key: str = f"sync_lock:{current_user.id}"
+    
+    if redis_client.exists(lock_key):
+        ttl = redis_client.ttl(lock_key)
+        minutes, seconds = divmod(ttl, 60)
+        raise TooManySyncRequests(f"{minutes} minutes and {seconds} seconds")
+
+    redis_client.setex(lock_key, SYNC_TIMEOUT * 60, "true")
+    
     task = sync_user_data_task.delay(str(current_user.id))
+    
     return {
         "task_id": task.id,
         "status": "queued",

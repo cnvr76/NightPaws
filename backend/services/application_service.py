@@ -168,7 +168,7 @@ class ApplicationService:
     
     
     def __mark_as_ghosted_if_needed(self, application: Application) -> bool:
-        DAYS_THRESHOLD = 10
+        DAYS_THRESHOLD = 30
         if not application.current_status.is_syncable:
             return False
         

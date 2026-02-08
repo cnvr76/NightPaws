@@ -1,6 +1,6 @@
 from schemas.gmail_schema import GmailAnalyzedResponse, GmailResponse
 from models import EmailStatus
-from typing import List, Dict
+from typing import List, Dict, Optional
 from config.logger import Logger
 from setfit import SetFitModel
 import json
@@ -15,18 +15,34 @@ class AIService:
         self.model_path: str = "training_data/my_email_classifier"
         logger.info(f"Loading custom model from {self.model_path}...")
         
-        try:
-            self.model: SetFitModel = SetFitModel.from_pretrained(self.model_path)
-            
-            with open(f"{self.model_path}/labels_map.json", "r") as f:
-                self.id2label: Dict = json.load(f)
-                
-            logger.info("Custom Model loaded!")
-        except Exception as e:
-            logger.error(f"Failed to load model. You probably need to run train_classifier.py. Error: {e}")
-            raise e
+        self._model: Optional[SetFitModel] = None
+        self._id2label: Optional[Dict] = None
         
         self.lock = threading.Lock()
+        
+    @property
+    def model(self) -> SetFitModel:
+        if self._model is None:
+            try:
+                self._model: SetFitModel = SetFitModel.from_pretrained(self.model_path)
+                logger.info("Custom Model loaded!")
+            except Exception as e:
+                logger.error(f"Failed to load model. You probably need to run train_classifier.py. Error: {e}")
+                raise e
+        return self._model
+        
+    
+    @property
+    def id2label(self) -> Dict:
+        if self._id2label is None:
+            try:
+                with open(f"{self.model_path}/labels_map.json", "r") as f:
+                    self._id2label: Dict = json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load labels map: {e}")
+                raise e
+        return self._id2label
+        
 
     def analyze(self, messages: List[GmailResponse]) -> List[GmailAnalyzedResponse]:
         if not messages:

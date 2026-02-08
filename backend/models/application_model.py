@@ -15,6 +15,7 @@ class ApplicationStatus(str, Enum):
     TEST_TASK = "test_task"
     OFFER = "offer"
     GHOSTED = "ghosted"
+    OTHER = "other"
     
     @property
     def is_syncable(self) -> bool:
@@ -30,6 +31,7 @@ class EmailStatus(str, Enum):
     CONFIRMATION = "confirmation"
     TRASH = "trash"
     IRRELEVANT = "irrelevant"
+    OTHER = "other"
 
     @property
     def is_valid(self) -> bool:

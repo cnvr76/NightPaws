@@ -1,4 +1,5 @@
 from fastapi import status
+from config.redis_config import SYNC_TIMEOUT
 
 
 class CustomException(Exception):
@@ -69,3 +70,8 @@ class GmailRefreshTokenExpired(CustomException):
     def __init__(self):
         self.detail: str = "Gmail token expired, please reconnect your Google account" 
         super().__init__(self.detail, status.HTTP_401_UNAUTHORIZED)
+        
+class TooManySyncRequests(CustomException):
+    def __init__(self, remaining_time: str):
+        self.detail: str = f"Too many requests, sync is available every {SYNC_TIMEOUT} minutes. Remaining: {remaining_time}"
+        super().__init__(self.detail, status.HTTP_429_TOO_MANY_REQUESTS)
