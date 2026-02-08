@@ -12,6 +12,9 @@ checkpoints
 *.vscode
 *.sql
 
+# macros
+*.bat
+
 # Logs
 logs
 *.log

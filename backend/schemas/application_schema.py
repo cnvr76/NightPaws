@@ -14,6 +14,10 @@ class ApplicationCreate(BaseModel):
 
 class ApplicationUpdate(BaseModel):
     current_status: Optional[ApplicationStatus] = None 
+    
+
+class ApplicationMessageUpdate(BaseModel):
+    message_status: Optional[ApplicationStatus] = None
 
 
 class ApplicationResponse(BaseModel):

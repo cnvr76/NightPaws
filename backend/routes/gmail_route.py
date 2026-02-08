@@ -29,11 +29,6 @@ async def verify_cron(x_cron_secret: str = Header(None)) -> None:
         raise InvalidCRONSecret()
 
 
-@router.get("/sync/all-users", status_code=200)
-async def sync_all_applications(db: Session = Depends(get_db), _secret: None = Depends(verify_cron)):
-    pass
-
-
 @router.get("/sync/me", response_model=List[ApplicationResponse])
 async def sync_my_applications(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user.work_email:

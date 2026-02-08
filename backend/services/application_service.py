@@ -1,8 +1,9 @@
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.exc import IntegrityError
-from schemas import ApplicationUpdate, ApplicationCreate
+from schemas import ApplicationUpdate, ApplicationCreate, ApplicationMessageUpdate
 from models import User, Application, ApplicationStatus, ChainComponent
 from scripts.exceptions import UserDoesntExist, ApplicationAlreadyExists, CustomException
 from datetime import datetime
@@ -62,17 +63,17 @@ class ApplicationService:
         except Exception as e:
             logger.error(f"Error while registering new application {processed_title} from {processed_company}: {e}")
             raise e
+        
+        
+    def __set_new_appl_data(self, application: Application, data: ApplicationMessageUpdate | ApplicationUpdate) -> Application:
+        update_data: Dict[str, Any] = data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(application, key, value)
     
 
     def update_application(self, appl_id: UUID, user_id: UUID, new_data: ApplicationUpdate, db: Session) -> Application:
-        application: Application = db.query(Application).filter(
-            Application.id == appl_id, 
-            Application.user_id == user_id
-        ).first()
-
-        update_data: Dict[str, Any] = new_data.model_dump(exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(application, key, value)
+        application: Application = self.get_application_by_id(user_id, appl_id, db)
+        self.__set_new_appl_data(application, new_data)
 
         db.add(application)
         db.flush()
@@ -80,11 +81,38 @@ class ApplicationService:
 
         return application
     
+    
+    def update_message(self, appl_id: UUID, user_id: UUID, message_id: str, new_data: ApplicationMessageUpdate, db: Session) -> Application:
+        application: Application = self.get_application_by_id(user_id, appl_id, db)
+        
+        components: List[ChainComponent] = application.email_chain
+        is_modified: bool = False
+        
+        for comp in components:
+            if comp["message_id"] == message_id:
+                if status := new_data.message_status:
+                    comp["status"] = status
+                    is_modified = True
+                break
+            
+        if is_modified:
+            components.sort(key=lambda c: c["received_at"], reverse=True)
+            application.email_chain = list(components)
+            flag_modified(application, "email_chain")
+            
+            latest_email: ChainComponent = components[0]
+            if latest_email["message_id"] == message_id:
+                application.current_status = latest_email["status"]
+            
+            db.add(application)
+            db.flush()
+            db.refresh(application)
+        
+        return application
+    
 
     def delete_email(self, appl_id: UUID, message_id: str, user_id: UUID, db: Session) -> Application:
-        application: Application = db.query(Application).filter(
-            Application.id == appl_id, Application.user_id == user_id,
-        ).first()
+        application: Application = self.get_application_by_id(user_id, appl_id, db)
         
         updated_emails: List[ChainComponent] = [
             message for message in application.email_chain
@@ -106,27 +134,28 @@ class ApplicationService:
         return application
             
 
-    def add_email_components(self, application: Application, new_data: Optional[List[ChainComponent]], db: Session) -> Application:
-        if not new_data:
-            return application
-
+    def add_email_components(self, application: Application, new_data: List[ChainComponent], db: Session) -> Application:
         email_ids_map: Dict[str, ChainComponent] = {comp["message_id"]: comp for comp in application.email_chain}       
+        has_new_messages: bool = False
+        
         for msg in new_data:
-            if isinstance(msg["received_at"], datetime):
-                msg["received_at"] = msg["received_at"].isoformat()
-            email_ids_map[msg["message_id"]] = msg
+            if msg not in email_ids_map:
+                has_new_messages = True
+                
+                # converting string dates of existing email components to datetime objects
+                if isinstance(msg["received_at"], datetime):
+                    msg["received_at"] = msg["received_at"].isoformat()
+                email_ids_map[msg["message_id"]] = msg
 
         components: List[ChainComponent] = list(email_ids_map.values())
         components.sort(key=lambda c: c["received_at"], reverse=True)
 
-        current_status: ApplicationStatus = application.current_status
-        if components:
+        if has_new_messages and components:
             # TODO - if last message is REJECCTION, then it should stay like that and don't change
             # but then there should be good email filtration to remove IRRELEVANT messsages
-            current_status = components[0]["status"]
+            application.current_status = components[0]["status"]
         
         application.email_chain = components
-        application.current_status = current_status
 
         db.add(application)
         db.flush()
@@ -138,20 +167,20 @@ class ApplicationService:
     def save_emails(self, applications: List[Application], analysed_messages: List[List[ChainComponent] | Exception | None], db: Session) -> List[Application]:
         saved_applications: List[Application] = []
         
-        for application, message in zip(applications, analysed_messages):
+        for application, messages in zip(applications, analysed_messages):
             appl_id: UUID = application.id
-            if isinstance(message, CustomException):
-                logger.error(f"(Custom) Error syncing application {appl_id}: {message}")
-                raise message
-            if isinstance(message, Exception):
-                logger.error(f"Error syncing application {appl_id}: {message}")
+            if isinstance(messages, CustomException):
+                logger.error(f"(Custom) Error syncing application {appl_id}: {messages}")
+                raise messages
+            if isinstance(messages, Exception):
+                logger.error(f"Error syncing application {appl_id}: {messages}")
                 continue
-            if not message:
+            if not messages:
                 saved_applications.append(application)
                 continue
             
             try:
-                saved_application: Application = self.add_email_components(application, message, db)
+                saved_application: Application = self.add_email_components(application, messages, db)
                 saved_applications.append(saved_application)
             except Exception as e:
                 logger.error(f"DB error saving application {appl_id}: {e}")

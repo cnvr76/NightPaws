@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from typing import List
 from services.application_service import application_service
-from schemas.application_schema import ApplicationCreate, ApplicationResponse, ApplicationUpdate
+from schemas.application_schema import ApplicationCreate, ApplicationResponse, ApplicationUpdate, ApplicationMessageUpdate
 from sqlalchemy.orm import Session
 from config.database import get_db
 from uuid import UUID
@@ -49,9 +49,17 @@ async def delete_email_component(appl_id: UUID, message_id: str, db: Session = D
     return updated_application
     
 
-@router.put("/my/{appl_id}/update", response_model=ApplicationResponse)
+@router.patch("/my/{appl_id}/update", response_model=ApplicationResponse)
 async def update_application_info(appl_id: UUID, new_application_data: ApplicationUpdate,
                                    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     updated_application: Application = application_service.update_application(appl_id, current_user.id, new_application_data, db)
+    db.commit()
+    return updated_application
+
+
+@router.patch("/my/{appl_id}/message/{message_id}/update", response_model=ApplicationResponse)
+async def update_application_message_status(appl_id: UUID, message_id: str, new_message_data: ApplicationMessageUpdate, 
+                                            db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    updated_application: Application = application_service.update_message(appl_id, current_user.id, message_id, new_message_data, db)
     db.commit()
     return updated_application

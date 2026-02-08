@@ -17,6 +17,7 @@
     "We will keep your resume on file for future openings",
     "Rozhodli sme sa uprednostniť iných kandidátov",
     "Zároveň Vás chcem informovať, že do ďalšieho kola výberového konania boli zaradení iní uchádzači",
+    "Do ďalšieho kola výberového konania boli zaradení iní uchádzači",
     "boli zaradení iní uchádzači",
     "Žiaľ, nepostupujete do ďalšieho kola",
     "Ďakujeme za účasť, ale vybrali sme iného uchádzača",
@@ -42,6 +43,9 @@
     "Uzatvárame výberový proces (no interview)"
   ],
   "INTERVIEW": [
+    "Tech call",
+    "Online coding session",
+    "invite you to an additional online coding exercise with",
     "We would like to invite you to an interview",
     "invites you to complete an assessment",
     "s Vami rada dohodla na telefonáte",
