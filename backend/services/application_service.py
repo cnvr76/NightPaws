@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict, Any
+from pydantic import TypeAdapter
 from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -6,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from schemas import ApplicationUpdate, ApplicationCreate, ApplicationMessageUpdate
 from models import User, Application, ApplicationStatus, ChainComponent
 from scripts.exceptions import UserDoesntExist, ApplicationAlreadyExists, CustomException
-from datetime import datetime
+from datetime import datetime, UTC, date
 from config.logger import Logger
 
 
@@ -134,15 +135,15 @@ class ApplicationService:
         return application
             
 
-    def add_email_components(self, application: Application, new_data: List[ChainComponent], db: Session) -> Application:
+    def __add_email_components(self, application: Application, new_data: List[ChainComponent], db: Session) -> Application:
         email_ids_map: Dict[str, ChainComponent] = {comp["message_id"]: comp for comp in application.email_chain}       
         has_new_messages: bool = False
         
         for msg in new_data:
-            if msg not in email_ids_map:
+            if msg["message_id"] not in email_ids_map.keys():
                 has_new_messages = True
                 
-                # converting string dates of existing email components to datetime objects
+                # converting datetime objects of existing email components to string date format 
                 if isinstance(msg["received_at"], datetime):
                     msg["received_at"] = msg["received_at"].isoformat()
                 email_ids_map[msg["message_id"]] = msg
@@ -150,10 +151,12 @@ class ApplicationService:
         components: List[ChainComponent] = list(email_ids_map.values())
         components.sort(key=lambda c: c["received_at"], reverse=True)
 
-        if has_new_messages and components:
+        if components:
             # TODO - if last message is REJECCTION, then it should stay like that and don't change
             # but then there should be good email filtration to remove IRRELEVANT messsages
-            application.current_status = components[0]["status"]
+            latest_email: ChainComponent = components[0]
+            if has_new_messages:
+                application.current_status = latest_email["status"]
         
         application.email_chain = components
 
@@ -162,6 +165,24 @@ class ApplicationService:
         db.refresh(application)
 
         return application
+    
+    
+    def __mark_as_ghosted_if_needed(self, application: Application) -> bool:
+        DAYS_THRESHOLD = 10
+        if not application.current_status.is_syncable:
+            return False
+        
+        components: List[ChainComponent] = application.email_chain
+        latest_date_raw: date | datetime | str = components[0]["received_at"] if components else application.applied_at
+        latest_date: date = TypeAdapter(date).validate_python(latest_date_raw)
+        
+        days_since_last_update: int = (date.today() - latest_date).days
+        logger.info(f"Days since {latest_date} for {application.job_title} at {application.company_name} = {days_since_last_update} => {'skip' if days_since_last_update >= DAYS_THRESHOLD else 'not skip'}")
+        if days_since_last_update >= DAYS_THRESHOLD:
+            application.current_status = ApplicationStatus.GHOSTED
+            return True
+            
+        return False
     
 
     def save_emails(self, applications: List[Application], analysed_messages: List[List[ChainComponent] | Exception | None], db: Session) -> List[Application]:
@@ -176,11 +197,16 @@ class ApplicationService:
                 logger.error(f"Error syncing application {appl_id}: {messages}")
                 continue
             if not messages:
+                is_marked: bool = self.__mark_as_ghosted_if_needed(application)
+                if is_marked:
+                    db.add(application)
+                    db.flush()
+
                 saved_applications.append(application)
                 continue
             
             try:
-                saved_application: Application = self.add_email_components(application, messages, db)
+                saved_application: Application = self.__add_email_components(application, messages, db)
                 saved_applications.append(saved_application)
             except Exception as e:
                 logger.error(f"DB error saving application {appl_id}: {e}")

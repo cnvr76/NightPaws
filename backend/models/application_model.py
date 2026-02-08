@@ -15,11 +15,10 @@ class ApplicationStatus(str, Enum):
     TEST_TASK = "test_task"
     OFFER = "offer"
     GHOSTED = "ghosted"
-    IGNORE = "ignore"
     
     @property
     def is_syncable(self) -> bool:
-        return self not in (ApplicationStatus.REJECTION, ApplicationStatus.IGNORE, ApplicationStatus.OFFER)
+        return self not in (ApplicationStatus.REJECTION, ApplicationStatus.OFFER)
 
 
 class EmailStatus(str, Enum):
