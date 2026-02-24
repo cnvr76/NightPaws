@@ -60,7 +60,7 @@ class ApplicationService:
             db.refresh(new_application)
             return new_application
         except IntegrityError:
-            raise ApplicationAlreadyExists(f"Application {processed_title} from {processed_company} already registered under your name.")
+            raise ApplicationAlreadyExists(processed_title, processed_company)
         except Exception as e:
             logger.error(f"Error while registering new application {processed_title} from {processed_company}: {e}")
             raise e
@@ -177,7 +177,7 @@ class ApplicationService:
         latest_date: date = TypeAdapter(date).validate_python(latest_date_raw)
         
         days_since_last_update: int = (date.today() - latest_date).days
-        logger.info(f"Days since {latest_date} for {application.job_title} at {application.company_name} = {days_since_last_update} => {'skip' if days_since_last_update >= DAYS_THRESHOLD else 'not skip'}")
+        logger.info(f"Days since {latest_date} for {application.job_title} at {application.company_name} = {days_since_last_update} => {'ghosted' if days_since_last_update >= DAYS_THRESHOLD else 'skip'}")
         if days_since_last_update >= DAYS_THRESHOLD:
             application.current_status = ApplicationStatus.GHOSTED
             return True

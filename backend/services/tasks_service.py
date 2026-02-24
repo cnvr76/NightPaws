@@ -35,6 +35,7 @@ def sync_user_data_task(self, user_id: str) -> Dict[str, Any]:
             "user_id": user_id
         }
     except Exception as e:
+        logger.error(f"Celery task failed for user {user_id}. Error: {e}")
         db.rollback()
         raise self.retry(exc=e, countdown=60)
     finally:

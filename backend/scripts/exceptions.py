@@ -46,8 +46,9 @@ class CredentialsValidationError(CustomException):
 
 # -- APPLICATION exceptions ---
 class ApplicationAlreadyExists(CustomException):
-    def __init__(self, detail: str):
-        super().__init__(detail, status.HTTP_403_FORBIDDEN)
+    def __init__(self, title: str, company: str):
+        self.detal: str = f"Application {title} from {company} already registered under your name"
+        super().__init__(self.detail, status.HTTP_409_CONFLICT)
 
 
 # --- GMAIL exceptions ---

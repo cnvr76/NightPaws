@@ -13,7 +13,8 @@ class ApplicationCreate(BaseModel):
 
 
 class ApplicationUpdate(BaseModel):
-    current_status: Optional[ApplicationStatus] = None 
+    current_status: Optional[ApplicationStatus] = None
+    applied_at: Optional[date] = None
     
 
 class ApplicationMessageUpdate(BaseModel):

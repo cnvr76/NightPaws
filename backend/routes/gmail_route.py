@@ -4,15 +4,11 @@ from config.database import get_db
 from routes.auth_route import get_current_user
 from services.gmail_service import gmail_service
 from services.parsing_service import parsing_service
-from services.application_service import application_service
 from services.tasks_service import sync_user_data_task
-from models import User, ChainComponent
-from typing import List
+from models import User
 from dotenv import load_dotenv
 import os
-from scripts.exceptions import InvalidCRONSecret, MissingWorkEmail, CustomException, TooManySyncRequests
-from models import Application
-from schemas import ApplicationUpdate, ApplicationResponse, GmailAnalyzedResponse
+from scripts.exceptions import InvalidCRONSecret, MissingWorkEmail, TooManySyncRequests
 from config.logger import Logger
 from config.celery_config import celery_app
 from config.redis_config import redis_client, SYNC_TIMEOUT
@@ -75,26 +71,17 @@ async def sync_my_applications(current_user: User = Depends(get_current_user)):
     }
 
 
-@router.get("/test-gmail-search", status_code=200)
-async def test_gmail_search(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    applications = application_service.get_users_applications(current_user.id, db)
-    
-    return {
-        "messages": await gmail_service.fetch(applications, current_user)
-    }
+# FIXME - rewrite to use celery (or comment out completely)
+# @router.post("/sync/me/{appl_id}", response_model=List[ApplicationResponse])
+# async def sync_specific_application(appl_id: UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+#     application: Application = application_service.get_application_by_id(current_user.id, appl_id, db)
+#     analysed_messages: List[List[ChainComponent] | Exception | None] = await gmail_service.fetch([application], current_user)
+#     saved_application: List[Application] = application_service.save_emails([application], analysed_messages, db)
 
+#     db.commit()
+#     db.refresh(saved_application)
 
-# FIXME - when 0 emails -> breaks with 500
-@router.get("/sync/me/{appl_id}", response_model=ApplicationResponse)
-async def sync_specific_application(appl_id: UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    application: Application = application_service.get_application_by_id(current_user.id, appl_id, db)
-    analysed_messages:  List[List[ChainComponent] | Exception | None] = await gmail_service.fetch([application], current_user)
-    saved_application: Application = application_service.save_emails([application], analysed_messages, db)[0]
-
-    db.commit()
-    db.refresh(saved_application)
-
-    return saved_application
+#     return saved_application
 
 
 @router.get("/execute-query", status_code=200)

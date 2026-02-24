@@ -11,6 +11,7 @@ checkpoints
 # sqltools
 *.vscode
 *.sql
+!init.sql
 
 # macros
 *.bat

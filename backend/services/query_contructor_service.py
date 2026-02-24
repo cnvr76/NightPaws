@@ -72,7 +72,7 @@ class QueryConstructor:
         final_query: str = (
             f'({subject_query}) OR '
             f'from:{company_query} '
-            f'AND after:{self.__get_date(application)}'
+            f'AND after:{self.__get_date(application)} '
             f'AND -from:me {self.filters}'
         )
         return final_query

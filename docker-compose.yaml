@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: nightpaws-backend
+    volumes:
+      - ./backend:/app
+      - model_data:/app/training_data/my_email_classifier
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8000:8000"
+
+  celery_worker:
+    build: ./backend
+    container_name: nightpaws-worker
+    volumes:
+      - ./backend:/app
+      - model_data:/app/training_data/my_email_classifier
+    command: celery -A config.celery_config worker --loglevel=info --pool=solo
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - db
+      - redis
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: nightpaws-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:17
+    container_name: nightpaws-db
+    restart: always
+    env_file:
+      - ./backend/.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgres_data:
+  model_data:
